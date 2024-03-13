@@ -1,0 +1,17 @@
+{
+  "canisters": {
+    "infinitecloud_bot_backend": {
+      "candid": "src/infinitecloud_bot_backend/infinitecloud_bot_backend.did",
+      "package": "infinitecloud_bot_backend",
+      "type": "rust"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
