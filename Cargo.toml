@@ -1,5 +1,3 @@
 [workspace]
-members = [
-    "src/infinitecloud_bot_backend"
-]
+members = ["src/backend"]
 resolver = "2"

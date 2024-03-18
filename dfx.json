@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "infinitecloud_bot_backend": {
-      "candid": "src/infinitecloud_bot_backend/infinitecloud_bot_backend.did",
-      "package": "infinitecloud_bot_backend",
+    "backend": {
+      "candid": "src/backend/backend.did",
+      "package": "backend",
       "type": "rust"
     }
   },

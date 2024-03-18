@@ -1,0 +1,40 @@
+use crate::repositories::{ChatId, Filesystem, FilesystemRepository, FilesystemRepositoryImpl};
+
+pub trait FilesystemService {
+    fn get_or_create_filesystem(&self, chat_id: &ChatId) -> Filesystem;
+}
+
+pub struct FilesystemServiceImpl<T: FilesystemRepository> {
+    filesystem_repository: T,
+}
+
+impl Default for FilesystemServiceImpl<FilesystemRepositoryImpl> {
+    fn default() -> Self {
+        Self::new(FilesystemRepositoryImpl::default())
+    }
+}
+
+impl<T: FilesystemRepository> FilesystemService for FilesystemServiceImpl<T> {
+    fn get_or_create_filesystem(&self, chat_id: &ChatId) -> Filesystem {
+        match self
+            .filesystem_repository
+            .get_filesystem_by_chat_id(chat_id)
+        {
+            Some(filesystem) => filesystem,
+            None => {
+                let fs = Filesystem::default();
+                self.filesystem_repository
+                    .set_filesystem_by_chat_id(chat_id.clone(), fs.clone());
+                fs
+            }
+        }
+    }
+}
+
+impl<T: FilesystemRepository> FilesystemServiceImpl<T> {
+    fn new(filesystem_repository: T) -> Self {
+        Self {
+            filesystem_repository,
+        }
+    }
+}
