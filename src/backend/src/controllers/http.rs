@@ -58,11 +58,8 @@ impl Default
 }
 
 fn add_method(value: &mut Value, method: String) {
-    match value {
-        Value::Object(m) => {
-            m.insert("method".to_string(), Value::String(method));
-        }
-        _ => (),
+    if let Value::Object(m) = value {
+        m.insert("method".to_string(), Value::String(method));
     }
 }
 

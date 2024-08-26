@@ -1,4 +1,4 @@
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, fmt, path::PathBuf};
 
 use candid::{CandidType, Decode, Deserialize, Encode};
 use ic_stable_structures::{storable::Bound, Storable};
@@ -37,30 +37,34 @@ impl ChatSessionAction {
     }
 }
 
-impl Into<String> for ChatSessionAction {
-    fn into(self) -> String {
-        self.to_string()
+impl From<ChatSessionAction> for String {
+    fn from(val: ChatSessionAction) -> Self {
+        val.to_string()
     }
 }
 
-impl ToString for ChatSessionAction {
-    fn to_string(&self) -> String {
-        match self {
-            ChatSessionAction::MkDir => "mkdir-action".to_string(),
-            ChatSessionAction::CurrentDir => ".".to_string(),
-            ChatSessionAction::ParentDir => "..".to_string(),
-            ChatSessionAction::DeleteDir => "delete-dir-action".to_string(),
-            ChatSessionAction::Explorer => "explorer-action".to_string(),
-            ChatSessionAction::RenameFile => "rename-file-action".to_string(),
-            ChatSessionAction::PrepareMoveFile => "prepare-move-file-action".to_string(),
-            ChatSessionAction::DeleteFile => "delete-file-action".to_string(),
-        }
+impl fmt::Display for ChatSessionAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                ChatSessionAction::MkDir => "mkdir-action".to_string(),
+                ChatSessionAction::CurrentDir => ".".to_string(),
+                ChatSessionAction::ParentDir => "..".to_string(),
+                ChatSessionAction::DeleteDir => "delete-dir-action".to_string(),
+                ChatSessionAction::Explorer => "explorer-action".to_string(),
+                ChatSessionAction::RenameFile => "rename-file-action".to_string(),
+                ChatSessionAction::PrepareMoveFile => "prepare-move-file-action".to_string(),
+                ChatSessionAction::DeleteFile => "delete-file-action".to_string(),
+            }
+        )
     }
 }
 
-impl Into<ChatSessionAction> for String {
-    fn into(self) -> ChatSessionAction {
-        match self.as_str() {
+impl From<String> for ChatSessionAction {
+    fn from(val: String) -> Self {
+        match val.as_str() {
             "mkdir-action" => ChatSessionAction::MkDir,
             "." => ChatSessionAction::CurrentDir,
             ".." => ChatSessionAction::ParentDir,

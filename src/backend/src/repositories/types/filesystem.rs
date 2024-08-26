@@ -24,9 +24,9 @@ impl From<i64> for ChatId {
     }
 }
 
-impl Into<TgChatId> for ChatId {
-    fn into(self) -> TgChatId {
-        TgChatId::Integer(self.0 as i64)
+impl From<ChatId> for TgChatId {
+    fn from(val: ChatId) -> Self {
+        TgChatId::Integer(val.0 as i64)
     }
 }
 
@@ -271,7 +271,7 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
     pub fn new(filesystem: &'a FileSystem, current_path: &Path) -> Self {
         let current_node = filesystem.get_node(current_path).unwrap();
 
-        let mut inline_keyboard = if current_path != &root_path() {
+        let mut inline_keyboard = if current_path != root_path() {
             vec![parent_dir_inline_button()]
         } else {
             vec![]

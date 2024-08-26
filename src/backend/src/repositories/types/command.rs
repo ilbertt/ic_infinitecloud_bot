@@ -22,8 +22,7 @@ impl TryFrom<Message> for Command {
 
         let entity = message
             .entities
-            .map(|e| e.first().cloned())
-            .flatten()
+            .and_then(|e| e.first().cloned())
             .ok_or_else(|| "No entities in message".to_string())?;
 
         if entity.type_field != MessageEntityType::BotCommand {
