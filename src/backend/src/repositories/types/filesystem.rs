@@ -438,6 +438,30 @@ mod tests {
     }
 
     #[rstest]
+    fn filesystem_mkdir() {
+        let mut filesystem = FileSystem::new();
+        filesystem.mkdir(&PathBuf::from("/dir-a")).unwrap();
+
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-a"))
+            .unwrap()
+            .is_directory());
+    }
+
+    #[rstest]
+    fn filesystem_create_file() {
+        let mut filesystem = FileSystem::new();
+        filesystem
+            .create_file(&PathBuf::from("/dir-a/file-a.txt"), 0, 0)
+            .unwrap();
+
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-a/file-a.txt"))
+            .unwrap()
+            .is_file());
+    }
+
+    #[rstest]
     fn filesystem_node_get_nodes() {
         let mut node = FileSystemNode::new_directory();
         node.get_nodes_mut()
@@ -479,6 +503,22 @@ mod tests {
 
         assert_eq!(files.len(), 1);
         assert_eq!(files[0], PathBuf::from("file-a.txt"));
+    }
+
+    #[rstest]
+    fn filesystem_node_is_directory() {
+        let node = FileSystemNode::new_directory();
+        assert!(node.is_directory());
+        let node = FileSystemNode::new_file(0, 0);
+        assert!(!node.is_directory());
+    }
+
+    #[rstest]
+    fn filesystem_node_is_file() {
+        let node = FileSystemNode::new_file(0, 0);
+        assert!(node.is_file());
+        let node = FileSystemNode::new_directory();
+        assert!(!node.is_file());
     }
 
     #[rstest]
