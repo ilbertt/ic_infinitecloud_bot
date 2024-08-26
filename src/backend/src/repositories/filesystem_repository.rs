@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 
-use super::{init_filesystem, ChatId, Filesystem, FilesystemMemory};
+use super::{init_filesystem, ChatId, FileSystem, FilesystemMemory};
 
 pub trait FilesystemRepository {
-    fn get_filesystem_by_chat_id(&self, chat_id: &ChatId) -> Option<Filesystem>;
+    fn get_filesystem_by_chat_id(&self, chat_id: &ChatId) -> Option<FileSystem>;
 
-    fn set_filesystem_by_chat_id(&self, chat_id: ChatId, filesystem: Filesystem);
+    fn set_filesystem_by_chat_id(&self, chat_id: ChatId, filesystem: FileSystem);
 }
 
 pub struct FilesystemRepositoryImpl {}
@@ -17,11 +17,11 @@ impl Default for FilesystemRepositoryImpl {
 }
 
 impl FilesystemRepository for FilesystemRepositoryImpl {
-    fn get_filesystem_by_chat_id(&self, chat_id: &ChatId) -> Option<Filesystem> {
+    fn get_filesystem_by_chat_id(&self, chat_id: &ChatId) -> Option<FileSystem> {
         STATE.with_borrow(|s| s.filesystem.get(chat_id))
     }
 
-    fn set_filesystem_by_chat_id(&self, chat_id: ChatId, filesystem: Filesystem) {
+    fn set_filesystem_by_chat_id(&self, chat_id: ChatId, filesystem: FileSystem) {
         STATE.with_borrow_mut(|s| s.filesystem.insert(chat_id, filesystem));
     }
 }

@@ -2,6 +2,8 @@ use crate::repositories::{ChatId, ChatSession, ChatSessionRepository, ChatSessio
 
 pub trait ChatSessionService {
     fn get_or_create_chat_session(&self, chat_id: &ChatId) -> ChatSession;
+
+    fn update_chat_session(&self, chat_id: ChatId, chat_session: ChatSession);
 }
 
 pub struct ChatSessionServiceImpl<T: ChatSessionRepository> {
@@ -28,6 +30,11 @@ impl<T: ChatSessionRepository> ChatSessionService for ChatSessionServiceImpl<T> 
                 chat_session
             }
         }
+    }
+
+    fn update_chat_session(&self, chat_id: ChatId, chat_session: ChatSession) {
+        self.chat_session_repository
+            .set_chat_session_by_chat_id(chat_id, chat_session);
     }
 }
 

@@ -2,6 +2,9 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod messages {
     use const_format::formatcp;
+    use frankenstein::InlineKeyboardButton;
+
+    use crate::repositories::ChatSessionAction;
 
     use super::*;
 
@@ -68,16 +71,24 @@ _Version: {VERSION}_"#
     }
 
     /* INLINE BUTTONS */
-    const THIS_DIR_BUTTON_TEXT: &str = "HERE";
+    pub const MKDIR_BUTTON_TEXT: &str = "+ New Directory";
+    pub const CURRENT_DIR_BUTTON_TEXT: &str = "HERE";
+    pub const PARENT_DIR_BUTTON_TEXT: &str = "..";
+    pub const DELETE_DIR_BUTTON_TEXT: &str = "🗑️ DELETE THIS DIR";
 
     /* SYSTEM MESSAGES */
     const CURRENT_PATH_TEXT: &str = "CURRENT PATH:";
     const CREATE_DIR_TEXT: &str = formatcp!(
         "Navigate to the directory in which you want to CREATE the new directory and click _{}_",
-        THIS_DIR_BUTTON_TEXT
+        CURRENT_DIR_BUTTON_TEXT
     );
+    const RENAME_FILE_TEXT: &str = "Select the file you want to RENAME";
+    const PREPARE_MOVE_FILE_TEXT: &str = "Select the file you want to MOVE";
+    const DELETE_DIR_TEXT: &str = "Select the directory you want to DELETE";
+    const DELETE_FILE_TEXT: &str = "Select the file you want to DELETE";
+    const GENERIC_ERROR_TEXT: &str = "An error has occurred. Please try again.";
 
-    fn current_path(path: String) -> String {
+    fn current_path_text(path: String) -> String {
         format!(
             r#"{CURRENT_PATH_TEXT}
 
@@ -90,8 +101,73 @@ _Version: {VERSION}_"#
             r#"{}
 
 {CREATE_DIR_TEXT}"#,
-            current_path(path)
+            current_path_text(path)
         )
+    }
+
+    pub fn explorer_message(path: String) -> String {
+        current_path_text(path)
+    }
+
+    pub fn rename_file_message(path: String) -> String {
+        format!(
+            r#"{}
+
+{RENAME_FILE_TEXT}"#,
+            current_path_text(path)
+        )
+    }
+
+    pub fn prepare_move_file_message(path: String) -> String {
+        format!(
+            r#"{}
+
+{PREPARE_MOVE_FILE_TEXT}"#,
+            current_path_text(path)
+        )
+    }
+
+    pub fn delete_dir_message(path: String) -> String {
+        format!(
+            r#"{}
+
+{DELETE_DIR_TEXT}"#,
+            current_path_text(path)
+        )
+    }
+
+    pub fn delete_file_message(path: String) -> String {
+        format!(
+            r#"{}
+
+{DELETE_FILE_TEXT}"#,
+            current_path_text(path)
+        )
+    }
+
+    pub fn generic_error_message() -> String {
+        GENERIC_ERROR_TEXT.to_string()
+    }
+
+    pub fn current_dir_inline_button() -> InlineKeyboardButton {
+        InlineKeyboardButton::builder()
+            .text(ChatSessionAction::CurrentDir.beautified())
+            .callback_data(ChatSessionAction::CurrentDir)
+            .build()
+    }
+
+    pub fn parent_dir_inline_button() -> InlineKeyboardButton {
+        InlineKeyboardButton::builder()
+            .text(ChatSessionAction::ParentDir.beautified())
+            .callback_data(ChatSessionAction::ParentDir)
+            .build()
+    }
+
+    pub fn delete_dir_inline_button() -> InlineKeyboardButton {
+        InlineKeyboardButton::builder()
+            .text(ChatSessionAction::DeleteDir.beautified())
+            .callback_data(ChatSessionAction::DeleteDir)
+            .build()
     }
 }
 
@@ -122,5 +198,13 @@ pub mod http {
             upgrade: Some(false),
             streaming_strategy: None,
         }
+    }
+}
+
+pub mod filesystem {
+    use std::path::PathBuf;
+
+    pub fn root_path() -> PathBuf {
+        PathBuf::from("/")
     }
 }

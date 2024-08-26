@@ -5,6 +5,11 @@ pub enum Command {
     Help,
     Info,
     MkDir,
+    Explorer,
+    RenameFile,
+    MoveFile,
+    DeleteDir,
+    DeleteFile,
 }
 
 impl TryFrom<Message> for Command {
@@ -34,6 +39,11 @@ impl TryFrom<Message> for Command {
             "/help" => Ok(Command::Help),
             "/info" => Ok(Command::Info),
             "/mkdir" => Ok(Command::MkDir),
+            "/explorer" => Ok(Command::Explorer),
+            "/rename_file" => Ok(Command::RenameFile),
+            "/move_file" => Ok(Command::MoveFile),
+            "/delete_dir" => Ok(Command::DeleteDir),
+            "/delete_file" => Ok(Command::DeleteFile),
             _ => Err("Unknown command".to_string()),
         }
     }
