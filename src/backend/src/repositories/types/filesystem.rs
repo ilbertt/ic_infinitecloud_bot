@@ -167,6 +167,10 @@ impl FileSystem {
     }
 
     pub fn get_node(&self, path: &Path) -> Result<&FileSystemNode, String> {
+        if !path.is_absolute() {
+            return Err("Path must be absolute".to_string());
+        }
+
         let mut current = &self.root;
         for component in path.components().skip(1) {
             // Skip root
@@ -175,18 +179,19 @@ impl FileSystem {
                     .get::<Path>(component.as_ref())
                     .ok_or("Path not found")?;
             } else {
-                return Err("Not a directory".to_string());
+                return Ok(current);
             }
         }
         Ok(current)
     }
 
     pub fn ls(&self, path: &Path) -> Result<Vec<PathBuf>, String> {
-        if !path.is_absolute() {
-            return Err("Path must be absolute".to_string());
+        let node = self.get_node(path)?;
+        if node.is_directory() {
+            node.ls()
+        } else {
+            Err("Not a directory".to_string())
         }
-
-        self.get_node(path)?.ls()
     }
 
     pub fn mkdir(&mut self, path: &Path) -> Result<(), String> {
@@ -356,12 +361,43 @@ mod tests {
     }
 
     #[rstest]
-    fn filesystem_get_node() {
+    fn filesystem_get_node_directory() {
         let filesystem = FileSystem::default();
 
         let node = filesystem.get_node(&PathBuf::from("/Documents")).unwrap();
 
         assert!(node.is_directory());
+    }
+
+    #[rstest]
+    fn filesystem_get_node_file() {
+        let mut filesystem = FileSystem::default();
+        filesystem
+            .create_file(&PathBuf::from("/dir-a/file-a.txt"), 0, 0)
+            .unwrap();
+
+        let node = filesystem
+            .get_node(&PathBuf::from("/dir-a/file-a.txt"))
+            .unwrap();
+        assert!(node.is_file());
+    }
+
+    #[rstest]
+    fn filesystem_get_node_not_found() {
+        let filesystem = FileSystem::default();
+
+        let node = filesystem.get_node(&PathBuf::from("/non-existent"));
+
+        assert_eq!(node, Err("Path not found".to_string()));
+    }
+
+    #[rstest]
+    fn filesystem_get_node_not_absolute() {
+        let filesystem = FileSystem::default();
+
+        let node = filesystem.get_node(&PathBuf::from("Documents"));
+
+        assert_eq!(node, Err("Path must be absolute".to_string()));
     }
 
     #[rstest]
