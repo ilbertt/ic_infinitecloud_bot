@@ -8,7 +8,7 @@ pub mod messages {
 
     use super::*;
 
-    const GITHUB_REPO_URL: &str = "https://github.com/ilbertt/infinitecloud_bot";
+    const GITHUB_REPO_URL: &str = "https://github.com/ilbertt/ic_infinitecloud_bot";
 
     const BOT_HELP_MESSAGE: &str = r#"*SAVE FILES*:
 1. send ONE FILE AT A TIME to the bot (the file could be any type of message: _text_, _audio_, _video_, _image_, _sticker_, etc.)
@@ -60,7 +60,7 @@ To see this help message again, use the /help command"#,
 
     pub fn info_message() -> String {
         format!(
-            r#"*Infinite Cloud Bot* - infinite free cloud storage on Telegram
+            r#"*Infinite Cloud Bot* - infinite free cloud storage on Telegram (powered by the [Internet Computer](https://internetcomputer.org/))
 
 Usage instructions: /help
 

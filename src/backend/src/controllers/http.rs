@@ -1,5 +1,6 @@
 use frankenstein::{
-    MaybeInaccessibleMessage, ParseMode, ReplyMarkup, SendMessageParams, Update, UpdateContent,
+    LinkPreviewOptions, MaybeInaccessibleMessage, ParseMode, ReplyMarkup, SendMessageParams,
+    Update, UpdateContent,
 };
 use ic_cdk::{query, update};
 use serde_json::Value;
@@ -63,6 +64,23 @@ fn add_method(value: &mut Value, method: String) {
     }
 }
 
+fn default_send_message_params(chat_id: ChatId) -> SendMessageParams {
+    #[allow(deprecated)]
+    // MarkdownV2 does not work, we have to use the deprecated Markdown variant
+    SendMessageParams::builder()
+        .chat_id(chat_id.into_tg_chat_id())
+        .parse_mode(ParseMode::Markdown)
+        .link_preview_options(LinkPreviewOptions {
+            is_disabled: Some(true),
+            url: None,
+            prefer_small_media: None,
+            prefer_large_media: None,
+            show_above_text: None,
+        })
+        .text("")
+        .build()
+}
+
 fn send_message(msg: SendMessageParams) -> HttpResponse {
     let mut value = serde_json::to_value(msg).unwrap();
     add_method(&mut value, "sendMessage".to_string());
@@ -103,13 +121,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     .get_or_create_chat_session(&chat_id);
                 let current_path = chat_session.current_path().clone();
 
-                #[allow(deprecated)]
-                // MarkdownV2 does not work, we have to use the deprecated Markdown variant
-                let mut send_message_params = SendMessageParams::builder()
-                    .chat_id(chat_id.clone().into_tg_chat_id())
-                    .parse_mode(ParseMode::Markdown)
-                    .text("")
-                    .build();
+                let mut send_message_params = default_send_message_params(chat_id.clone());
 
                 match Command::try_from(msg) {
                     Ok(command) => match command {
@@ -215,13 +227,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     .chat_session_service
                     .get_or_create_chat_session(&chat_id);
 
-                #[allow(deprecated)]
-                // MarkdownV2 does not work, we have to use the deprecated Markdown variant
-                let mut send_message_params = SendMessageParams::builder()
-                    .chat_id(chat_id.clone().into_tg_chat_id())
-                    .parse_mode(ParseMode::Markdown)
-                    .text("")
-                    .build();
+                let mut send_message_params = default_send_message_params(chat_id.clone());
 
                 match query.data.unwrap().into() {
                     ChatSessionAction::MkDir => {}
