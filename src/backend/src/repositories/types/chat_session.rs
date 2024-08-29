@@ -137,6 +137,17 @@ impl Storable for ChatSession {
     const BOUND: Bound = Bound::Unbounded;
 }
 
+pub fn with_clear_action_on_error<F: FnOnce(&mut ChatSession) -> Result<R, String>, R>(
+    chat_session: &mut ChatSession,
+    f: F,
+) -> Result<R, String> {
+    let result = f(chat_session);
+    if result.is_err() {
+        chat_session.clear_action();
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

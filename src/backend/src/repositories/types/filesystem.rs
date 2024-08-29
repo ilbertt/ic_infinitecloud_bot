@@ -5,7 +5,7 @@ use std::{
 };
 
 use candid::{CandidType, Decode, Deserialize, Encode};
-use frankenstein::{ChatId as TgChatId, InlineKeyboardButton, InlineKeyboardMarkup};
+use frankenstein::{InlineKeyboardButton, InlineKeyboardMarkup};
 use ic_stable_structures::{storable::Bound, Storable};
 
 use crate::utils::{
@@ -16,39 +16,6 @@ use crate::utils::{
 use super::ChatSessionAction;
 
 pub type MessageId = u64;
-
-#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ChatId(pub u64);
-
-impl From<i64> for ChatId {
-    fn from(value: i64) -> Self {
-        Self(value as u64)
-    }
-}
-
-impl From<ChatId> for TgChatId {
-    fn from(val: ChatId) -> Self {
-        TgChatId::Integer(val.0 as i64)
-    }
-}
-
-impl ChatId {
-    pub fn into_tg_chat_id(self) -> TgChatId {
-        self.into()
-    }
-}
-
-impl Storable for ChatId {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        self.0.to_bytes()
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Self(u64::from_bytes(bytes))
-    }
-
-    const BOUND: Bound = u64::BOUND;
-}
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub enum FileSystemNode {
@@ -326,31 +293,6 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
 mod tests {
     use super::*;
     use rstest::*;
-
-    #[rstest]
-    fn chat_id_storable_impl() {
-        let chat_id = ChatId(123);
-
-        let serialized_chat_id = chat_id.to_bytes();
-        let deserialized_chat_id = ChatId::from_bytes(serialized_chat_id);
-
-        assert_eq!(deserialized_chat_id, chat_id);
-    }
-
-    #[rstest]
-    fn chat_id_from() {
-        let from: ChatId = 123i64.into();
-
-        assert_eq!(from, ChatId(123));
-    }
-
-    #[rstest]
-    fn into_tg_chat_id() {
-        let chat_id = ChatId(123);
-        let tg_chat_id: TgChatId = chat_id.into_tg_chat_id();
-
-        assert_eq!(tg_chat_id, TgChatId::Integer(123));
-    }
 
     #[rstest]
     fn filesystem_storable_impl() {
