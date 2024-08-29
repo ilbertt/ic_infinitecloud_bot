@@ -13,6 +13,8 @@ use crate::utils::{
     messages::{current_dir_inline_button, delete_dir_inline_button, parent_dir_inline_button},
 };
 
+use super::ChatSessionAction;
+
 pub type MessageId = u64;
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -79,11 +81,11 @@ impl FileSystemNode {
         }
     }
 
-    fn is_directory(&self) -> bool {
+    pub fn is_directory(&self) -> bool {
         matches!(self, Self::Directory { .. })
     }
 
-    fn is_file(&self) -> bool {
+    pub fn is_file(&self) -> bool {
         matches!(self, Self::File { .. })
     }
 
@@ -263,7 +265,7 @@ impl Storable for FileSystem {
 fn path_button(path: &Path) -> InlineKeyboardButton {
     InlineKeyboardButton::builder()
         .text(path.display().to_string())
-        .callback_data(path.to_string_lossy())
+        .callback_data(ChatSessionAction::FileOrDir(path.to_path_buf()))
         .build()
 }
 
@@ -273,8 +275,8 @@ pub struct KeyboardDirectoryBuilder<'a> {
 }
 
 impl<'a> KeyboardDirectoryBuilder<'a> {
-    pub fn new(filesystem: &'a FileSystem, current_path: &Path) -> Self {
-        let current_node = filesystem.get_node(current_path).unwrap();
+    pub fn new(filesystem: &'a FileSystem, current_path: &Path) -> Result<Self, String> {
+        let current_node = filesystem.get_node(current_path)?;
 
         let mut inline_keyboard = if current_path != root_path() {
             vec![parent_dir_inline_button()]
@@ -282,14 +284,14 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
             vec![]
         };
 
-        for path in current_node.ls_directories().unwrap() {
+        for path in current_node.ls_directories()? {
             inline_keyboard.push(path_button(&path));
         }
 
-        Self {
+        Ok(Self {
             inline_keyboard,
             current_node,
-        }
+        })
     }
 
     /// Prepends the delete dir button to the keyboard
@@ -305,12 +307,12 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
     }
 
     /// Appends the files of the current directory to the keyboard
-    pub fn with_files(&mut self) -> &mut Self {
-        let paths = self.current_node.ls_files().unwrap();
+    pub fn with_files(&mut self) -> Result<&mut Self, String> {
+        let paths = self.current_node.ls_files()?;
         for path in paths {
             self.inline_keyboard.push(path_button(&path));
         }
-        self
+        Ok(self)
     }
 
     pub fn build(&self) -> InlineKeyboardMarkup {
@@ -365,7 +367,8 @@ mod tests {
         let filesystem = FileSystem::default();
 
         let node = filesystem.get_node(&PathBuf::from("/Documents")).unwrap();
-
+        assert!(node.is_directory());
+        let node = filesystem.get_node(&root_path()).unwrap();
         assert!(node.is_directory());
     }
 
@@ -560,7 +563,7 @@ mod tests {
     #[rstest]
     fn keyboard_directory_builder_new() {
         let filesystem = FileSystem::default();
-        let builder = KeyboardDirectoryBuilder::new(&filesystem, &PathBuf::from("/"));
+        let builder = KeyboardDirectoryBuilder::new(&filesystem, &PathBuf::from("/")).unwrap();
 
         let root_contents = filesystem.ls(&PathBuf::from("/")).unwrap();
         assert_eq!(builder.inline_keyboard.len(), root_contents.len());
@@ -579,7 +582,7 @@ mod tests {
         filesystem
             .create_file(&path.join("file-a.txt"), 0, 0)
             .unwrap();
-        let builder = KeyboardDirectoryBuilder::new(&filesystem, &path);
+        let builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
 
         let contents = filesystem
             .get_node(&path)
@@ -600,7 +603,7 @@ mod tests {
     fn test_keyboard_directory_builder_with_current_dir_button() {
         let filesystem = FileSystem::default();
         let path = PathBuf::from("/");
-        let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path);
+        let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
         let keyboard = builder.with_current_dir_button().build();
 
         assert_eq!(keyboard.inline_keyboard[0][0], current_dir_inline_button());
@@ -610,7 +613,7 @@ mod tests {
     fn test_keyboard_directory_builder_with_delete_dir_button() {
         let filesystem = FileSystem::default();
         let path = PathBuf::from("/");
-        let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path);
+        let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
         let keyboard = builder.with_delete_dir_button().build();
 
         assert_eq!(keyboard.inline_keyboard[0][0], delete_dir_inline_button());
@@ -623,8 +626,8 @@ mod tests {
             .create_file(&PathBuf::from("/test_file.txt"), 1, 100)
             .unwrap();
         let path = PathBuf::from("/");
-        let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path);
-        let keyboard = builder.with_files().build();
+        let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
+        let keyboard = builder.with_files().unwrap().build();
 
         let file_paths = filesystem.ls(&path).unwrap();
         assert_eq!(keyboard.inline_keyboard[0].len(), file_paths.len());

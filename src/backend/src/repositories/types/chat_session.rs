@@ -20,6 +20,7 @@ pub enum ChatSessionAction {
     RenameFile,
     PrepareMoveFile,
     DeleteFile,
+    FileOrDir(PathBuf),
 }
 
 impl ChatSessionAction {
@@ -33,6 +34,7 @@ impl ChatSessionAction {
             ChatSessionAction::RenameFile => "".to_string(),
             ChatSessionAction::PrepareMoveFile => "".to_string(),
             ChatSessionAction::DeleteFile => "".to_string(),
+            ChatSessionAction::FileOrDir(path) => path.to_string_lossy().to_string(),
         }
     }
 }
@@ -57,6 +59,7 @@ impl fmt::Display for ChatSessionAction {
                 ChatSessionAction::RenameFile => "rename-file-action".to_string(),
                 ChatSessionAction::PrepareMoveFile => "prepare-move-file-action".to_string(),
                 ChatSessionAction::DeleteFile => "delete-file-action".to_string(),
+                ChatSessionAction::FileOrDir(path) => path.to_string_lossy().to_string(),
             }
         )
     }
@@ -73,7 +76,7 @@ impl From<String> for ChatSessionAction {
             "rename-file-action" => ChatSessionAction::RenameFile,
             "prepare-move-file-action" => ChatSessionAction::PrepareMoveFile,
             "delete-file-action" => ChatSessionAction::DeleteFile,
-            _ => todo!(),
+            _ => ChatSessionAction::FileOrDir(PathBuf::from(val)),
         }
     }
 }
@@ -106,6 +109,9 @@ impl ChatSession {
     }
 
     pub fn set_current_path(&mut self, path: PathBuf) {
+        if !path.is_absolute() {
+            panic!("Path is not absolute");
+        }
         self.current_path = path
     }
 }
@@ -144,5 +150,21 @@ mod tests {
         let deserialized_chat_session = ChatSession::from_bytes(serialized_chat_session);
 
         assert_eq!(deserialized_chat_session, chat_session);
+    }
+
+    #[rstest]
+    fn set_current_path() {
+        let mut chat_session = ChatSession::default();
+        chat_session.set_current_path(PathBuf::from("/test"));
+        assert_eq!(chat_session.current_path(), &PathBuf::from("/test"));
+        chat_session.set_current_path(root_path());
+        assert_eq!(chat_session.current_path(), &root_path());
+    }
+
+    #[rstest]
+    #[should_panic(expected = "Path is not absolute")]
+    fn set_current_path_relative() {
+        let mut chat_session = ChatSession::default();
+        chat_session.set_current_path(PathBuf::from("test"));
     }
 }

@@ -2,7 +2,7 @@ use frankenstein::{
     LinkPreviewOptions, MaybeInaccessibleMessage, ParseMode, ReplyMarkup, SendMessageParams,
     Update, UpdateContent,
 };
-use ic_cdk::{query, update};
+use ic_cdk::{print, query, update};
 use serde_json::Value;
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
         ChatSessionService, ChatSessionServiceImpl, FilesystemService, FilesystemServiceImpl,
     },
     utils::{
-        http::{error500, ok200},
+        http::error500,
         messages::{
             delete_dir_message, delete_file_message, explorer_message, generic_error_message,
             help_message, info_message, mkdir_message, prepare_move_file_message,
@@ -81,20 +81,20 @@ fn default_send_message_params(chat_id: ChatId) -> SendMessageParams {
         .build()
 }
 
-fn send_message(msg: SendMessageParams) -> HttpResponse {
-    let mut value = serde_json::to_value(msg).unwrap();
+fn send_message(msg: SendMessageParams) -> Result<HttpResponse, String> {
+    let mut value = serde_json::to_value(msg).map_err(|err| err.to_string())?;
     add_method(&mut value, "sendMessage".to_string());
 
-    HttpResponse {
+    Ok(HttpResponse {
         status_code: 200,
         headers: vec![HeaderField(
             String::from("content-type"),
             String::from("application/json"),
         )],
-        body: serde_json::to_vec(&value).unwrap(),
+        body: serde_json::to_vec(&value).map_err(|err| err.to_string())?,
         upgrade: Some(false),
         streaming_strategy: None,
-    }
+    })
 }
 
 impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
@@ -111,7 +111,24 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
             Err(err) => return error500(Some(err)),
         };
 
-        match update.content {
+        match self
+            .process_tg_update_content(update.content)
+            .and_then(send_message)
+        {
+            Ok(res) => res,
+            Err(err) => {
+                println!("Error processing update content: {}", err);
+                error500(Some(err))
+            }
+        }
+    }
+
+    // TODO: reset chat session action (using `clear_action()`) if processing fails
+    fn process_tg_update_content(
+        &self,
+        update_content: UpdateContent,
+    ) -> Result<SendMessageParams, String> {
+        match update_content {
             UpdateContent::Message(msg) => {
                 let chat_id = ChatId::from(msg.chat.id);
                 let from_user = msg.clone().from;
@@ -120,102 +137,108 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     .chat_session_service
                     .get_or_create_chat_session(&chat_id);
                 let current_path = chat_session.current_path().clone();
+                let command = Command::try_from(msg)?;
+
+                print(format!(
+                    "UpdateContent::Message: chat_id: {:?}, current_path: {:?}, command: {:?}",
+                    chat_id, current_path, command
+                ));
 
                 let mut send_message_params = default_send_message_params(chat_id.clone());
 
-                match Command::try_from(msg) {
-                    Ok(command) => match command {
-                        Command::Start => {
-                            send_message_params.text =
-                                start_message(from_user.map(|user| user.first_name))
-                        }
-                        Command::Help => send_message_params.text = help_message(),
-                        Command::Info => send_message_params.text = info_message(),
-                        Command::MkDir => {
-                            chat_session.set_action(ChatSessionAction::MkDir);
+                match command {
+                    Command::Start => {
+                        send_message_params.text =
+                            start_message(from_user.map(|user| user.first_name))
+                    }
+                    Command::Help => send_message_params.text = help_message(),
+                    Command::Info => send_message_params.text = info_message(),
+                    Command::MkDir => {
+                        chat_session.set_action(ChatSessionAction::MkDir);
 
-                            send_message_params.text =
-                                mkdir_message(chat_session.current_path_string());
+                        send_message_params.text =
+                            mkdir_message(chat_session.current_path_string());
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)
-                                .with_current_dir_button()
-                                .build();
-                            send_message_params.reply_markup =
-                                Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
-                        }
-                        Command::Explorer => {
-                            chat_session.set_action(ChatSessionAction::Explorer);
+                        let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                            .with_current_dir_button()
+                            .build();
+                        send_message_params.reply_markup =
+                            Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                    }
+                    Command::Explorer => {
+                        chat_session.set_action(ChatSessionAction::Explorer);
 
-                            send_message_params.text =
-                                explorer_message(chat_session.current_path_string());
+                        send_message_params.text =
+                            explorer_message(chat_session.current_path_string());
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)
-                                .with_files()
-                                .build();
-                            send_message_params.reply_markup =
-                                Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
-                        }
-                        Command::RenameFile => {
-                            chat_session.set_action(ChatSessionAction::RenameFile);
+                        let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                            .with_files()?
+                            .build();
+                        send_message_params.reply_markup =
+                            Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                    }
+                    Command::RenameFile => {
+                        chat_session.set_action(ChatSessionAction::RenameFile);
 
-                            send_message_params.text =
-                                rename_file_message(chat_session.current_path_string());
+                        send_message_params.text =
+                            rename_file_message(chat_session.current_path_string());
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)
-                                .with_files()
-                                .build();
-                            send_message_params.reply_markup =
-                                Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
-                        }
-                        Command::MoveFile => {
-                            chat_session.set_action(ChatSessionAction::PrepareMoveFile);
+                        let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                            .with_files()?
+                            .build();
+                        send_message_params.reply_markup =
+                            Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                    }
+                    Command::MoveFile => {
+                        chat_session.set_action(ChatSessionAction::PrepareMoveFile);
 
-                            send_message_params.text =
-                                prepare_move_file_message(chat_session.current_path_string());
+                        send_message_params.text =
+                            prepare_move_file_message(chat_session.current_path_string());
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)
-                                .with_files()
-                                .build();
-                            send_message_params.reply_markup =
-                                Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
-                        }
-                        Command::DeleteDir => {
-                            chat_session.set_action(ChatSessionAction::DeleteDir);
+                        let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                            .with_files()?
+                            .build();
+                        send_message_params.reply_markup =
+                            Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                    }
+                    Command::DeleteDir => {
+                        chat_session.set_action(ChatSessionAction::DeleteDir);
 
-                            send_message_params.text =
-                                delete_dir_message(chat_session.current_path_string());
+                        send_message_params.text =
+                            delete_dir_message(chat_session.current_path_string());
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)
-                                .with_delete_dir_button()
-                                .with_files()
-                                .build();
-                            send_message_params.reply_markup =
-                                Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
-                        }
-                        Command::DeleteFile => {
-                            chat_session.set_action(ChatSessionAction::DeleteFile);
+                        let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                            .with_delete_dir_button()
+                            .with_files()?
+                            .build();
+                        send_message_params.reply_markup =
+                            Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                    }
+                    Command::DeleteFile => {
+                        chat_session.set_action(ChatSessionAction::DeleteFile);
 
-                            send_message_params.text =
-                                delete_file_message(chat_session.current_path_string());
+                        send_message_params.text =
+                            delete_file_message(chat_session.current_path_string());
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)
-                                .with_files()
-                                .build();
-                            send_message_params.reply_markup =
-                                Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
-                        }
-                    },
-                    Err(_) => send_message_params.text = "Error".to_string(),
-                };
+                        let keyboard = KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                            .with_files()?
+                            .build();
+                        send_message_params.reply_markup =
+                            Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                    }
+                }
 
                 self.chat_session_service
                     .update_chat_session(chat_id, chat_session);
 
-                send_message(send_message_params)
+                Ok(send_message_params)
             }
             UpdateContent::CallbackQuery(query) => {
                 let chat_id = ChatId::from(
-                    match query.message.unwrap() {
+                    match query
+                        .message
+                        .ok_or_else(|| "Message not found in callback query".to_string())?
+                    {
                         MaybeInaccessibleMessage::Message(msg) => msg.chat,
                         MaybeInaccessibleMessage::InaccessibleMessage(msg) => Box::new(msg.chat),
                     }
@@ -226,15 +249,26 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                 let mut chat_session = self
                     .chat_session_service
                     .get_or_create_chat_session(&chat_id);
+                let action = query
+                    .data
+                    .ok_or_else(|| "Data not found in callback query".to_string())?
+                    .into();
+
+                print(format!(
+                    "UpdateContent::CallbackQuery: chat_id: {:?}, current_path: {:?}, action: {:?}",
+                    chat_id,
+                    chat_session.current_path(),
+                    action
+                ));
 
                 let mut send_message_params = default_send_message_params(chat_id.clone());
 
-                match query.data.unwrap().into() {
+                match action {
                     ChatSessionAction::MkDir => {}
                     ChatSessionAction::CurrentDir => {
-                        let action = chat_session.action();
+                        let current_action = chat_session.action();
 
-                        match action {
+                        match current_action {
                             Some(ChatSessionAction::MkDir) => {}
                             _ => {
                                 send_message_params.text = generic_error_message();
@@ -248,15 +282,38 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     ChatSessionAction::RenameFile => {}
                     ChatSessionAction::PrepareMoveFile => {}
                     ChatSessionAction::DeleteFile => {}
+                    ChatSessionAction::FileOrDir(path) => match chat_session.action() {
+                        Some(ChatSessionAction::Explorer) => {
+                            let node = fs.get_node(&path)?;
+
+                            if node.is_directory() {
+                                chat_session.set_current_path(path);
+                                send_message_params.text =
+                                    explorer_message(chat_session.current_path_string());
+
+                                let keyboard = KeyboardDirectoryBuilder::new(
+                                    &fs,
+                                    chat_session.current_path(),
+                                )?
+                                .with_files()?
+                                .build();
+                                send_message_params.reply_markup =
+                                    Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                            }
+                        }
+                        _ => {
+                            send_message_params.text = generic_error_message();
+                            send_message_params.parse_mode = None;
+                        }
+                    },
                 }
 
-                send_message(send_message_params)
-            }
-            _ => {
-                // TODO: handle the other update types better
+                self.chat_session_service
+                    .update_chat_session(chat_id, chat_session);
 
-                ok200()
+                Ok(send_message_params)
             }
+            _ => Err("Unsupported update content".to_string()),
         }
     }
 }

@@ -1,5 +1,6 @@
 use frankenstein::{Message, MessageEntityType};
 
+#[derive(Debug)]
 pub enum Command {
     Start,
     Help,
