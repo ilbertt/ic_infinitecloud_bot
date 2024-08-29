@@ -1,10 +1,11 @@
 use frankenstein::{
     LinkPreviewOptions, ParseMode, ReplyMarkup, SendMessageParams, Update, UpdateContent,
 };
-use ic_cdk::{print, query, update};
+use ic_cdk::{query, update};
 use serde_json::Value;
 
 use crate::{
+    custom_print,
     repositories::{
         with_clear_action_on_error, ChatId, ChatSessionAction, ChatSessionRepositoryImpl, Command,
         FilesystemRepositoryImpl, HeaderField, HttpRequest, HttpResponse, HttpUpdateRequest,
@@ -108,12 +109,12 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
     // TODO: write integration tests for testing bot updates.
     // See https://core.telegram.org/bots/webhooks#testing-your-bot-with-updates
     fn http_request(&self, req: HttpUpdateRequest) -> HttpResponse {
-        print(format!(
+        custom_print!(
             "http_request: method: {:?}, url: {:?}, body length: {:?}",
             req.method,
             req.url,
             req.body.len()
-        ));
+        );
 
         let update: Update = match serde_json::from_slice(&req.body) {
             Ok(update) => update,
@@ -125,7 +126,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
             Err((err, None)) => Err(err),
             Err((err, Some(chat_id))) => {
                 let err_msg = format!("Error processing update content: {}", err);
-                print(&err_msg);
+                custom_print!("{}", err_msg);
                 let mut params = default_send_message_params(chat_id);
                 params.text = err_msg;
                 params.parse_mode = None;
@@ -133,7 +134,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
             }
         }
         .unwrap_or_else(|err| {
-            print(format!("Error: {}", err));
+            custom_print!("Error: {}", err);
             // returning 500 causes Telegram to retry the request, which is not what we want in this case
             ok200()
         })
@@ -144,6 +145,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
         update_content: UpdateContent,
     ) -> Result<SendMessageParams, (String, Option<ChatId>)> {
         let chat_id = ChatId::try_from(&update_content).map_err(|err| (err, None))?;
+        custom_print!("Message from chat_id: {}", chat_id);
         match update_content {
             UpdateContent::Message(msg) => {
                 let from_user = msg.clone().from;
@@ -156,10 +158,10 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     let current_path = cs.current_path().clone();
                     let command = Command::try_from(msg)?;
 
-                    print(format!(
-                        "UpdateContent::Message: chat_id: {:?}, current_path: {:?}, command: {:?}",
-                        chat_id, current_path, command
-                    ));
+                    custom_print!(
+                        "UpdateContent::Message: chat_id: {:?}, current_path: {:?}, current_action: {:?}, command: {:?}",
+                        chat_id, current_path, cs.action(), command
+                    );
 
                     let mut send_message_params = default_send_message_params(chat_id.clone());
 
@@ -263,12 +265,13 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                         .ok_or_else(|| "Data not found in callback query".to_string())?
                         .into();
 
-                    print(format!(
-                        "UpdateContent::CallbackQuery: chat_id: {:?}, current_path: {:?}, action: {:?}",
+                    custom_print!(
+                        "UpdateContent::CallbackQuery: chat_id: {:?}, current_path: {:?}, current_action: {:?}, action: {:?}",
                         chat_id,
                         cs.current_path(),
-                            action
-                    ));
+                        cs.action(),
+                        action
+                    );
 
                     let mut send_message_params = default_send_message_params(chat_id.clone());
 

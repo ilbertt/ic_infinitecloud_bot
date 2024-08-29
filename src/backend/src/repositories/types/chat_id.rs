@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Display};
 
 use candid::{CandidType, Deserialize};
 use frankenstein::{ChatId as TgChatId, MaybeInaccessibleMessage, UpdateContent};
@@ -16,6 +16,12 @@ impl From<i64> for ChatId {
 impl From<ChatId> for TgChatId {
     fn from(val: ChatId) -> Self {
         TgChatId::Integer(val.0 as i64)
+    }
+}
+
+impl Display for ChatId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

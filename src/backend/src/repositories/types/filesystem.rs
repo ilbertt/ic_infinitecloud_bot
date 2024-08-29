@@ -10,6 +10,7 @@ use ic_stable_structures::{storable::Bound, Storable};
 
 use crate::utils::{
     filesystem::root_path,
+    is_absolute,
     messages::{current_dir_inline_button, delete_dir_inline_button, parent_dir_inline_button},
 };
 
@@ -136,7 +137,7 @@ impl FileSystem {
     }
 
     pub fn get_node(&self, path: &Path) -> Result<&FileSystemNode, String> {
-        if !path.is_absolute() {
+        if !is_absolute(&path) {
             return Err("Path must be absolute".to_string());
         }
 
@@ -505,9 +506,10 @@ mod tests {
     #[rstest]
     fn keyboard_directory_builder_new() {
         let filesystem = FileSystem::default();
-        let builder = KeyboardDirectoryBuilder::new(&filesystem, &PathBuf::from("/")).unwrap();
+        let path = root_path();
+        let builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
 
-        let root_contents = filesystem.ls(&PathBuf::from("/")).unwrap();
+        let root_contents = filesystem.ls(&path).unwrap();
         assert_eq!(builder.inline_keyboard.len(), root_contents.len());
         for path in root_contents {
             assert!(builder

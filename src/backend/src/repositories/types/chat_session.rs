@@ -3,10 +3,15 @@ use std::{borrow::Cow, fmt, path::PathBuf};
 use candid::{CandidType, Decode, Deserialize, Encode};
 use ic_stable_structures::{storable::Bound, Storable};
 
-use crate::utils::{
-    filesystem::root_path,
-    messages::{
-        CURRENT_DIR_BUTTON_TEXT, DELETE_DIR_BUTTON_TEXT, MKDIR_BUTTON_TEXT, PARENT_DIR_BUTTON_TEXT,
+use crate::{
+    custom_print,
+    utils::{
+        filesystem::root_path,
+        is_absolute,
+        messages::{
+            CURRENT_DIR_BUTTON_TEXT, DELETE_DIR_BUTTON_TEXT, MKDIR_BUTTON_TEXT,
+            PARENT_DIR_BUTTON_TEXT,
+        },
     },
 };
 
@@ -109,7 +114,7 @@ impl ChatSession {
     }
 
     pub fn set_current_path(&mut self, path: PathBuf) {
-        if !path.is_absolute() {
+        if !is_absolute(&path) {
             panic!("Path is not absolute");
         }
         self.current_path = path
@@ -143,6 +148,7 @@ pub fn with_clear_action_on_error<F: FnOnce(&mut ChatSession) -> Result<R, Strin
 ) -> Result<R, String> {
     let result = f(chat_session);
     if result.is_err() {
+        custom_print!("An error occurred, clearing chat session action");
         chat_session.clear_action();
     }
     result

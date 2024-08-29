@@ -207,4 +207,16 @@ pub mod filesystem {
     pub fn root_path() -> PathBuf {
         PathBuf::from("/")
     }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::utils::is_absolute;
+
+        use super::*;
+
+        #[test]
+        fn test_root_path() {
+            assert!(is_absolute(&root_path()));
+        }
+    }
 }
