@@ -10,7 +10,7 @@ use ic_stable_structures::{storable::Bound, Storable};
 
 use crate::utils::{
     filesystem::root_path,
-    is_absolute,
+    get_current_time, is_absolute,
     messages::{current_dir_inline_button, delete_dir_inline_button, parent_dir_inline_button},
 };
 
@@ -37,14 +37,14 @@ impl FileSystemNode {
     fn new_file(message_id: MessageId, size: u64) -> Self {
         Self::File {
             message_id,
-            created_at: 0, // TODO: add current timestamp
+            created_at: get_current_time(),
             size,
         }
     }
 
     fn new_directory() -> Self {
         Self::Directory {
-            created_at: 0, // TODO: add current timestamp
+            created_at: get_current_time(),
             nodes: FileSystemNodes::new(),
         }
     }
@@ -137,7 +137,7 @@ impl FileSystem {
     }
 
     pub fn get_node(&self, path: &Path) -> Result<&FileSystemNode, String> {
-        if !is_absolute(&path) {
+        if !is_absolute(path) {
             return Err("Path must be absolute".to_string());
         }
 

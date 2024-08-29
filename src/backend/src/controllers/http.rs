@@ -299,12 +299,12 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                 let node = fs.get_node(&path)?;
 
                                 if node.is_directory() {
-                                    cs.set_current_path(path);
+                                    cs.set_current_path(path.clone());
                                     send_message_params.text =
                                         explorer_message(cs.current_path_string());
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
+                                        KeyboardDirectoryBuilder::new(&fs, &path)?
                                             .with_files()?
                                             .build();
                                     send_message_params.reply_markup =
