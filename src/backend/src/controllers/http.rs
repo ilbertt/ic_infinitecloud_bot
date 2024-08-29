@@ -1,6 +1,5 @@
 use frankenstein::{
-    LinkPreviewOptions, MaybeInaccessibleMessage, ParseMode, ReplyMarkup, SendMessageParams,
-    Update, UpdateContent,
+    LinkPreviewOptions, ParseMode, ReplyMarkup, SendMessageParams, Update, UpdateContent,
 };
 use ic_cdk::{print, query, update};
 use serde_json::Value;
@@ -135,6 +134,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
         }
         .unwrap_or_else(|err| {
             print(format!("Error: {}", err));
+            // returning 500 causes Telegram to retry the request, which is not what we want in this case
             ok200()
         })
     }
