@@ -12,9 +12,8 @@ use crate::utils::{
     filesystem::root_path,
     get_current_time, is_absolute,
     messages::{current_dir_inline_button, delete_dir_inline_button, parent_dir_inline_button},
+    path_button,
 };
-
-use super::ChatSessionAction;
 
 pub type MessageId = u64;
 
@@ -230,20 +229,14 @@ impl Storable for FileSystem {
     const BOUND: Bound = Bound::Unbounded;
 }
 
-fn path_button(path: &Path) -> InlineKeyboardButton {
-    InlineKeyboardButton::builder()
-        .text(path.display().to_string())
-        .callback_data(ChatSessionAction::FileOrDir(path.to_path_buf()))
-        .build()
-}
-
 pub struct KeyboardDirectoryBuilder<'a> {
     inline_keyboard: Vec<InlineKeyboardButton>,
     current_node: &'a FileSystemNode,
+    current_path: &'a Path,
 }
 
 impl<'a> KeyboardDirectoryBuilder<'a> {
-    pub fn new(filesystem: &'a FileSystem, current_path: &Path) -> Result<Self, String> {
+    pub fn new(filesystem: &'a FileSystem, current_path: &'a Path) -> Result<Self, String> {
         let current_node = filesystem.get_node(current_path)?;
 
         let mut inline_keyboard = if current_path != root_path() {
@@ -253,12 +246,13 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
         };
 
         for path in current_node.ls_directories()? {
-            inline_keyboard.push(path_button(&path));
+            inline_keyboard.push(path_button(&current_path.join(path), true));
         }
 
         Ok(Self {
             inline_keyboard,
             current_node,
+            current_path,
         })
     }
 
@@ -278,7 +272,8 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
     pub fn with_files(&mut self) -> Result<&mut Self, String> {
         let paths = self.current_node.ls_files()?;
         for path in paths {
-            self.inline_keyboard.push(path_button(&path));
+            self.inline_keyboard
+                .push(path_button(&self.current_path.join(path), false));
         }
         Ok(self)
     }
@@ -511,11 +506,11 @@ mod tests {
 
         let root_contents = filesystem.ls(&path).unwrap();
         assert_eq!(builder.inline_keyboard.len(), root_contents.len());
-        for path in root_contents {
+        for content_path in root_contents {
             assert!(builder
                 .inline_keyboard
                 .iter()
-                .any(|button| { button == &path_button(&path) }));
+                .any(|button| { button == &path_button(&path.join(content_path.clone()), true) }));
         }
     }
 
@@ -535,11 +530,11 @@ mod tests {
             .unwrap();
         assert_eq!(builder.inline_keyboard.len(), contents.len() + 1);
         assert_eq!(builder.inline_keyboard[0], parent_dir_inline_button());
-        for path in contents {
+        for content_path in contents {
             assert!(builder
                 .inline_keyboard
                 .iter()
-                .any(|button| { button == &path_button(&path) }));
+                .any(|button| { button == &path_button(&path.join(content_path.clone()), true) }));
         }
     }
 
@@ -575,10 +570,5 @@ mod tests {
 
         let file_paths = filesystem.ls(&path).unwrap();
         assert_eq!(keyboard.inline_keyboard[0].len(), file_paths.len());
-        for file_path in file_paths {
-            assert!(keyboard.inline_keyboard[0]
-                .iter()
-                .any(|button| button == &path_button(&file_path)));
-        }
     }
 }

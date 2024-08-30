@@ -15,6 +15,7 @@ use crate::{
         ChatSessionService, ChatSessionServiceImpl, FilesystemService, FilesystemServiceImpl,
     },
     utils::{
+        filesystem::root_path,
         http::{error500, ok200},
         messages::{
             delete_dir_message, delete_file_message, explorer_message, generic_error_message,
@@ -288,7 +289,31 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                 }
                             }
                         }
-                        ChatSessionAction::ParentDir => {}
+                        ChatSessionAction::ParentDir => match cs.action() {
+                            Some(ChatSessionAction::Explorer) => {
+                                let current_path = cs.current_path().clone();
+                                let root_path = root_path();
+                                let path = current_path.parent().unwrap_or(root_path.as_ref());
+                                let node = fs.get_node(path)?;
+
+                                if node.is_directory() {
+                                    cs.set_current_path(path.to_path_buf());
+                                    send_message_params.text =
+                                        explorer_message(cs.current_path_string());
+
+                                    let keyboard =
+                                        KeyboardDirectoryBuilder::new(&fs, path)?
+                                            .with_files()?
+                                            .build();
+                                    send_message_params.reply_markup =
+                                        Some(ReplyMarkup::InlineKeyboardMarkup(keyboard));
+                                }
+                            }
+                            _ => {
+                                send_message_params.text = generic_error_message();
+                                send_message_params.parse_mode = None;
+                            }
+                        },
                         ChatSessionAction::DeleteDir => {}
                         ChatSessionAction::Explorer => {}
                         ChatSessionAction::RenameFile => {}
