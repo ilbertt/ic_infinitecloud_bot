@@ -108,6 +108,14 @@ impl FileSystemNode {
             Self::File { .. } => Err("Not a directory".to_string()),
         }
     }
+
+    pub fn file_message_id(&self) -> Option<MessageId> {
+        if let Self::File { message_id, .. } = self {
+            Some(*message_id)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
