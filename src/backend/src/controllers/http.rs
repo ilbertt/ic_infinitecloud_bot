@@ -254,7 +254,6 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                 res
             }
             UpdateContent::CallbackQuery(query) => {
-                let from_user = query.from;
                 let fs = self.filesystem_service.get_or_create_filesystem(&chat_id);
                 let mut chat_session = self
                     .chat_session_service
@@ -275,22 +274,19 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     );
 
                     let mut send_message_params = default_send_message_params(chat_id.clone());
+                    let current_action = cs.action().ok_or_else(|| "UpdateContent::CallbackQuery: No action in chat session".to_string())?;
 
                     match action {
                         ChatSessionAction::MkDir => {}
-                        ChatSessionAction::CurrentDir => {
-                            let current_action = cs.action();
-
-                            match current_action {
-                                Some(ChatSessionAction::MkDir) => {}
-                                _ => {
-                                    send_message_params.text = generic_error_message();
-                                    send_message_params.parse_mode = None;
-                                }
+                        ChatSessionAction::CurrentDir => match current_action {
+                            ChatSessionAction::MkDir => {}
+                            _ => {
+                                send_message_params.text = generic_error_message();
+                                send_message_params.parse_mode = None;
                             }
                         }
-                        ChatSessionAction::ParentDir => match cs.action() {
-                            Some(ChatSessionAction::Explorer) => {
+                        ChatSessionAction::ParentDir => match current_action {
+                            ChatSessionAction::Explorer => {
                                 let current_path = cs.current_path().clone();
                                 let root_path = root_path();
                                 let path = current_path.parent().unwrap_or(root_path.as_ref());
@@ -319,8 +315,8 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                         ChatSessionAction::RenameFile => {}
                         ChatSessionAction::PrepareMoveFile => {}
                         ChatSessionAction::DeleteFile => {}
-                        ChatSessionAction::FileOrDir(path) => match cs.action() {
-                            Some(ChatSessionAction::Explorer) => {
+                        ChatSessionAction::FileOrDir(path) => match current_action {
+                            ChatSessionAction::Explorer => {
                                 let node = fs.get_node(&path)?;
 
                                 if node.is_directory() {
