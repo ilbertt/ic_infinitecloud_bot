@@ -288,7 +288,12 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
 
     pub fn build(&self) -> InlineKeyboardMarkup {
         InlineKeyboardMarkup {
-            inline_keyboard: vec![self.inline_keyboard.clone()],
+            // to display one button per row, each button should have its own row
+            inline_keyboard: self
+                .inline_keyboard
+                .iter()
+                .map(|el| vec![el.clone()])
+                .collect(),
         }
     }
 }

@@ -409,9 +409,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                                 Ok(edit_message_params)
                             }
-                            _ => Err(
-                                "current action not supported by this action".to_string()
-                            )
+                            _ => Err("current action not supported by this action".to_string()),
                         },
                         ChatSessionAction::ParentDir => match current_action {
                             ChatSessionAction::Explorer => {
@@ -433,9 +431,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                                 Ok(edit_message_params)
                             }
-                            _ => Err(
-                                "current action not supported by this action".to_string()
-                            )
+                            _ => Err("current action not supported by this action".to_string()),
                         },
                         ChatSessionAction::FileOrDir(path) => match current_action {
                             ChatSessionAction::Explorer => {
@@ -454,9 +450,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                                 Ok(edit_message_params)
                             }
-                            _ => Err(
-                                "current action not supported by this action".to_string()
-                            )
+                            _ => Err("current action not supported by this action".to_string()),
                         },
                         ChatSessionAction::DeleteDir
                         | ChatSessionAction::Explorer
