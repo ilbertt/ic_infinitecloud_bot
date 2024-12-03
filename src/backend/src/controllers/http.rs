@@ -249,6 +249,9 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                     match Command::try_from(msg.clone()) {
                         Ok(command) => {
+                            // when receiving a command, we want to reset the chat session
+                            cs.reset();
+
                             let mut send_message_params = MessageParams::new_send(chat_id.clone());
 
                             match command {
@@ -450,12 +453,24 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                                 Ok(edit_message_params)
                             }
+                            ChatSessionAction::MkDir(_) => {
+                                cs.set_current_path(path.clone());
+                                edit_message_params
+                                    .set_text(mkdir_message(cs.current_path_string()));
+
+                                let keyboard = KeyboardDirectoryBuilder::new(&fs, &path)?
+                                    .with_current_dir_button()
+                                    .build();
+                                edit_message_params.set_inline_keyboard_markup(keyboard);
+                                Ok(edit_message_params)
+                            }
                             _ => Err("current action not supported by this action".to_string()),
                         },
                         ChatSessionAction::DeleteDir
                         | ChatSessionAction::Explorer
                         | ChatSessionAction::PrepareMoveFile
                         | ChatSessionAction::DeleteFile
+                        | ChatSessionAction::Back
                         | ChatSessionAction::RenameFile(_)
                         | ChatSessionAction::MkDir(_) => Err("invalid action".to_string()),
                     }

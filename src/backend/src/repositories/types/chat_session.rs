@@ -9,7 +9,7 @@ use crate::{
         filesystem::root_path,
         is_absolute,
         messages::{
-            CURRENT_DIR_BUTTON_TEXT, DELETE_DIR_BUTTON_TEXT, MKDIR_BUTTON_TEXT,
+            BACK_BUTTON_TEXT, CURRENT_DIR_BUTTON_TEXT, DELETE_DIR_BUTTON_TEXT, MKDIR_BUTTON_TEXT,
             PARENT_DIR_BUTTON_TEXT,
         },
     },
@@ -32,6 +32,7 @@ pub enum ChatSessionAction {
     PrepareMoveFile,
     DeleteFile,
     FileOrDir(PathBuf),
+    Back,
 }
 
 impl ChatSessionAction {
@@ -46,6 +47,7 @@ impl ChatSessionAction {
             ChatSessionAction::PrepareMoveFile => "".to_string(),
             ChatSessionAction::DeleteFile => "".to_string(),
             ChatSessionAction::FileOrDir(path) => path.to_string_lossy().to_string(),
+            ChatSessionAction::Back => BACK_BUTTON_TEXT.to_string(),
         }
     }
 }
@@ -71,6 +73,7 @@ impl fmt::Display for ChatSessionAction {
                 ChatSessionAction::PrepareMoveFile => "prepare-move-file-action".to_string(),
                 ChatSessionAction::DeleteFile => "delete-file-action".to_string(),
                 ChatSessionAction::FileOrDir(path) => path.to_string_lossy().to_string(),
+                ChatSessionAction::Back => "back-action".to_string(),
             }
         )
     }
@@ -87,6 +90,7 @@ impl From<String> for ChatSessionAction {
             "rename-file-action" => ChatSessionAction::RenameFile(None),
             "prepare-move-file-action" => ChatSessionAction::PrepareMoveFile,
             "delete-file-action" => ChatSessionAction::DeleteFile,
+            "back-action" => ChatSessionAction::Back,
             _ => ChatSessionAction::FileOrDir(PathBuf::from(val)),
         }
     }

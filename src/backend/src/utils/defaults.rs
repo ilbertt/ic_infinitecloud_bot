@@ -75,6 +75,7 @@ _Version: {VERSION}_"#
     pub const CURRENT_DIR_BUTTON_TEXT: &str = "HERE";
     pub const PARENT_DIR_BUTTON_TEXT: &str = "..";
     pub const DELETE_DIR_BUTTON_TEXT: &str = "🗑️ DELETE THIS DIR";
+    pub const BACK_BUTTON_TEXT: &str = "<< BACK";
 
     /* SYSTEM MESSAGES */
     const CURRENT_PATH_TEXT: &str = "CURRENT PATH:";
@@ -116,12 +117,7 @@ _Version: {VERSION}_"#
     }
 
     pub fn created_directory_success_message(dir_name: String, path: String) -> String {
-        format!(
-            r#"{}
-
-Directory `{dir_name}` created successfully!"#,
-            current_path_text(path)
-        )
+        format!("Directory **{dir_name}** CREATED at `{path}`")
     }
 
     pub fn explorer_message(path: String) -> String {
@@ -186,6 +182,13 @@ Directory `{dir_name}` created successfully!"#,
         InlineKeyboardButton::builder()
             .text(ChatSessionAction::DeleteDir.beautified())
             .callback_data(ChatSessionAction::DeleteDir)
+            .build()
+    }
+
+    pub fn back_inline_button() -> InlineKeyboardButton {
+        InlineKeyboardButton::builder()
+            .text(ChatSessionAction::Back.beautified())
+            .callback_data(ChatSessionAction::Back)
             .build()
     }
 }
