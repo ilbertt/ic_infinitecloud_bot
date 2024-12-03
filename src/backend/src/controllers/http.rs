@@ -19,10 +19,10 @@ use crate::{
         filesystem::root_path,
         http::{error500, ok200},
         messages::{
-            ask_directory_name_message, created_directory_success_message, delete_dir_message,
-            delete_file_message, explorer_message, generic_error_message, help_message,
-            info_message, mkdir_message, prepare_move_file_message, rename_file_message,
-            start_message,
+            ask_directory_name_message, back_inline_keyboard, created_directory_success_message,
+            delete_dir_message, delete_file_message, explorer_message, generic_error_message,
+            help_message, info_message, mkdir_message, prepare_move_file_message,
+            rename_file_message, start_message,
         },
     },
 };
@@ -269,7 +269,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         .set_text(mkdir_message(cs.current_path_string()));
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
                                             .with_current_dir_button()
                                             .build();
                                     send_message_params.set_inline_keyboard_markup(keyboard);
@@ -281,7 +281,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         .set_text(explorer_message(cs.current_path_string()));
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
                                             .with_files()?
                                             .build();
                                     send_message_params.set_inline_keyboard_markup(keyboard);
@@ -293,7 +293,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         .set_text(rename_file_message(cs.current_path_string()));
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
                                             .with_files()?
                                             .build();
                                     send_message_params.set_inline_keyboard_markup(keyboard);
@@ -306,7 +306,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                     ));
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
                                             .with_files()?
                                             .build();
                                     send_message_params.set_inline_keyboard_markup(keyboard);
@@ -318,7 +318,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         .set_text(delete_dir_message(cs.current_path_string()));
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
                                             .with_delete_dir_button()
                                             .with_files()?
                                             .build();
@@ -331,7 +331,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         .set_text(delete_file_message(cs.current_path_string()));
 
                                     let keyboard =
-                                        KeyboardDirectoryBuilder::new(&fs, &current_path)?
+                                        KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
                                             .with_files()?
                                             .build();
                                     send_message_params.set_inline_keyboard_markup(keyboard);
@@ -351,7 +351,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         ChatSessionWaitReply::DirectoryName,
                                     )) => {
                                         let dir_name = text;
-                                        let dir_path = current_path.join(&dir_name);
+                                        let dir_path = cs.current_path().join(&dir_name);
                                         fs.mkdir(&dir_path)?;
                                         cs.reset();
 
@@ -359,8 +359,8 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                             MessageParams::new_send(chat_id.clone());
                                         send_message_params.set_text(
                                             created_directory_success_message(
-                                                dir_path.to_string_lossy().to_string(),
                                                 dir_name,
+                                                dir_path.to_string_lossy().to_string(),
                                             ),
                                         );
                                         Ok(send_message_params)
@@ -404,11 +404,13 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                     match action {
                         ChatSessionAction::CurrentDir => match current_action {
                             ChatSessionAction::MkDir(_) => {
-                                edit_message_params
-                                    .set_text(ask_directory_name_message(cs.current_path_string()));
                                 cs.set_action(ChatSessionAction::MkDir(Some(
                                     ChatSessionWaitReply::DirectoryName,
                                 )));
+                                edit_message_params
+                                    .set_text(ask_directory_name_message(cs.current_path_string()));
+                                edit_message_params
+                                    .set_inline_keyboard_markup(back_inline_keyboard());
 
                                 Ok(edit_message_params)
                             }
@@ -432,6 +434,20 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                     edit_message_params.set_inline_keyboard_markup(keyboard);
                                 }
 
+                                Ok(edit_message_params)
+                            }
+                            ChatSessionAction::MkDir(_) => {
+                                let current_path = cs.current_path().clone();
+                                let root_path = root_path();
+                                let path = current_path.parent().unwrap_or(root_path.as_ref());
+                                cs.set_current_path(path.to_path_buf());
+                                edit_message_params
+                                    .set_text(mkdir_message(cs.current_path_string()));
+
+                                let keyboard = KeyboardDirectoryBuilder::new(&fs, path)?
+                                    .with_current_dir_button()
+                                    .build();
+                                edit_message_params.set_inline_keyboard_markup(keyboard);
                                 Ok(edit_message_params)
                             }
                             _ => Err("current action not supported by this action".to_string()),
@@ -466,11 +482,27 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                             }
                             _ => Err("current action not supported by this action".to_string()),
                         },
+                        ChatSessionAction::Back => match current_action {
+                            ChatSessionAction::MkDir(Some(_)) => {
+                                cs.set_action(ChatSessionAction::MkDir(None));
+
+                                edit_message_params
+                                    .set_text(mkdir_message(cs.current_path_string()));
+
+                                let keyboard =
+                                    KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
+                                        .with_current_dir_button()
+                                        .build();
+                                edit_message_params.set_inline_keyboard_markup(keyboard);
+
+                                Ok(edit_message_params)
+                            }
+                            _ => Err("current action not supported by this action".to_string()),
+                        },
                         ChatSessionAction::DeleteDir
                         | ChatSessionAction::Explorer
                         | ChatSessionAction::PrepareMoveFile
                         | ChatSessionAction::DeleteFile
-                        | ChatSessionAction::Back
                         | ChatSessionAction::RenameFile(_)
                         | ChatSessionAction::MkDir(_) => Err("invalid action".to_string()),
                     }

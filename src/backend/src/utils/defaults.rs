@@ -2,7 +2,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod messages {
     use const_format::formatcp;
-    use frankenstein::InlineKeyboardButton;
+    use frankenstein::{InlineKeyboardButton, InlineKeyboardMarkup};
 
     use crate::repositories::ChatSessionAction;
 
@@ -117,7 +117,7 @@ _Version: {VERSION}_"#
     }
 
     pub fn created_directory_success_message(dir_name: String, path: String) -> String {
-        format!("Directory **{dir_name}** CREATED at `{path}`")
+        format!("Directory *{dir_name}* CREATED at `{path}`")
     }
 
     pub fn explorer_message(path: String) -> String {
@@ -190,6 +190,12 @@ _Version: {VERSION}_"#
             .text(ChatSessionAction::Back.beautified())
             .callback_data(ChatSessionAction::Back)
             .build()
+    }
+
+    pub fn back_inline_keyboard() -> InlineKeyboardMarkup {
+        InlineKeyboardMarkup {
+            inline_keyboard: vec![vec![back_inline_button()]],
+        }
     }
 }
 
