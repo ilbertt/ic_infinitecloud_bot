@@ -2,6 +2,7 @@ use crate::repositories::{ChatId, FileSystem, FilesystemRepository, FilesystemRe
 
 pub trait FilesystemService {
     fn get_or_create_filesystem(&self, chat_id: &ChatId) -> FileSystem;
+    fn update_filesystem(&self, chat_id: &ChatId, filesystem: FileSystem);
 }
 
 pub struct FilesystemServiceImpl<T: FilesystemRepository> {
@@ -28,6 +29,11 @@ impl<T: FilesystemRepository> FilesystemService for FilesystemServiceImpl<T> {
                 fs
             }
         }
+    }
+
+    fn update_filesystem(&self, chat_id: &ChatId, filesystem: FileSystem) {
+        self.filesystem_repository
+            .set_filesystem_by_chat_id(chat_id.clone(), filesystem);
     }
 }
 

@@ -16,13 +16,19 @@ use crate::{
 };
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub enum ChatSessionWaitReply {
+    DirectoryName,
+    FileName,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub enum ChatSessionAction {
-    MkDir,
+    MkDir(Option<ChatSessionWaitReply>),
     CurrentDir,
     ParentDir,
     DeleteDir,
     Explorer,
-    RenameFile,
+    RenameFile(Option<ChatSessionWaitReply>),
     PrepareMoveFile,
     DeleteFile,
     FileOrDir(PathBuf),
@@ -31,12 +37,12 @@ pub enum ChatSessionAction {
 impl ChatSessionAction {
     pub fn beautified(&self) -> String {
         match self {
-            ChatSessionAction::MkDir => MKDIR_BUTTON_TEXT.to_string(),
+            ChatSessionAction::MkDir(_) => MKDIR_BUTTON_TEXT.to_string(),
             ChatSessionAction::CurrentDir => CURRENT_DIR_BUTTON_TEXT.to_string(),
             ChatSessionAction::ParentDir => PARENT_DIR_BUTTON_TEXT.to_string(),
             ChatSessionAction::DeleteDir => DELETE_DIR_BUTTON_TEXT.to_string(),
             ChatSessionAction::Explorer => "".to_string(),
-            ChatSessionAction::RenameFile => "".to_string(),
+            ChatSessionAction::RenameFile(_) => "".to_string(),
             ChatSessionAction::PrepareMoveFile => "".to_string(),
             ChatSessionAction::DeleteFile => "".to_string(),
             ChatSessionAction::FileOrDir(path) => path.to_string_lossy().to_string(),
@@ -56,12 +62,12 @@ impl fmt::Display for ChatSessionAction {
             f,
             "{}",
             match self {
-                ChatSessionAction::MkDir => "mkdir-action".to_string(),
+                ChatSessionAction::MkDir(_) => "mkdir-action".to_string(),
                 ChatSessionAction::CurrentDir => ".".to_string(),
                 ChatSessionAction::ParentDir => "..".to_string(),
                 ChatSessionAction::DeleteDir => "delete-dir-action".to_string(),
                 ChatSessionAction::Explorer => "explorer-action".to_string(),
-                ChatSessionAction::RenameFile => "rename-file-action".to_string(),
+                ChatSessionAction::RenameFile(_) => "rename-file-action".to_string(),
                 ChatSessionAction::PrepareMoveFile => "prepare-move-file-action".to_string(),
                 ChatSessionAction::DeleteFile => "delete-file-action".to_string(),
                 ChatSessionAction::FileOrDir(path) => path.to_string_lossy().to_string(),
@@ -73,12 +79,12 @@ impl fmt::Display for ChatSessionAction {
 impl From<String> for ChatSessionAction {
     fn from(val: String) -> Self {
         match val.as_str() {
-            "mkdir-action" => ChatSessionAction::MkDir,
+            "mkdir-action" => ChatSessionAction::MkDir(None),
             "." => ChatSessionAction::CurrentDir,
             ".." => ChatSessionAction::ParentDir,
             "delete-dir-action" => ChatSessionAction::DeleteDir,
             "explorer-action" => ChatSessionAction::Explorer,
-            "rename-file-action" => ChatSessionAction::RenameFile,
+            "rename-file-action" => ChatSessionAction::RenameFile(None),
             "prepare-move-file-action" => ChatSessionAction::PrepareMoveFile,
             "delete-file-action" => ChatSessionAction::DeleteFile,
             _ => ChatSessionAction::FileOrDir(PathBuf::from(val)),
@@ -118,6 +124,11 @@ impl ChatSession {
             panic!("Path is not absolute");
         }
         self.current_path = path
+    }
+
+    pub fn reset(&mut self) {
+        self.set_current_path(root_path());
+        self.action = None;
     }
 }
 
