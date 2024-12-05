@@ -380,13 +380,18 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         ChatSessionAction::SaveFile(Some(file_node), Some(_)) => {
                                             let file_name = text;
                                             let dir_path = cs.current_path();
-                                            let file_path = dir_path.join(&file_name);
-                                            fs.create_file_from_node(&file_path, file_node)?;
+                                            let file_path = dir_path.join(file_name);
+                                            let final_file_path =
+                                                fs.create_file_from_node(&file_path, file_node)?;
                                             let mut send_message_params =
                                                 MessageParams::new_send(chat_id.clone());
                                             send_message_params.set_text(
                                                 created_file_success_message(
-                                                    file_name,
+                                                    final_file_path
+                                                        .file_name()
+                                                        .unwrap()
+                                                        .to_string_lossy()
+                                                        .to_string(),
                                                     dir_path.to_string_lossy().to_string(),
                                                 ),
                                             );

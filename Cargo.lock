@@ -53,6 +53,7 @@ dependencies = [
  "frankenstein",
  "ic-cdk",
  "ic-stable-structures",
+ "mime2ext",
  "rstest",
  "serde",
  "serde_json",
@@ -638,6 +639,12 @@ name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
+
+[[package]]
+name = "mime2ext"
+version = "0.1.53"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "515a63dc9666c865e848b043ab52fe9a5c713ae89cde4b5fbaae67cfd614b93a"
 
 [[package]]
 name = "num-bigint"

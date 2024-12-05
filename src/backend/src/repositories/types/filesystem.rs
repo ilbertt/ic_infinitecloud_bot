@@ -7,6 +7,7 @@ use std::{
 use candid::{CandidType, Decode, Deserialize, Encode};
 use frankenstein::{InlineKeyboardButton, InlineKeyboardMarkup};
 use ic_stable_structures::{storable::Bound, Storable};
+use mime2ext::mime2ext;
 
 use crate::utils::{
     filesystem::root_path,
@@ -118,6 +119,14 @@ impl FileSystemNode {
             None
         }
     }
+
+    pub fn file_mime_type(&self) -> Option<String> {
+        if let Self::File { mime_type, .. } = self {
+            mime_type.clone()
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
@@ -201,10 +210,18 @@ impl FileSystem {
         &mut self,
         path: &Path,
         file_node: FileSystemNode,
-    ) -> Result<(), String> {
-        let parent = path.parent().ok_or("Invalid path")?;
+    ) -> Result<PathBuf, String> {
+        let mut path = path.to_path_buf();
+
+        if path.extension().is_none() {
+            if let Some(extension) = file_node.file_mime_type().and_then(mime2ext) {
+                path = path.with_extension(extension);
+            }
+        }
+
         let file_name = path.file_name().ok_or("Invalid file name")?;
 
+        let parent = path.parent().ok_or("Invalid path")?;
         let mut current = &mut self.root;
         for component in parent.components().skip(1) {
             // Skip root
@@ -219,7 +236,7 @@ impl FileSystem {
 
         if let FileSystemNode::Directory { nodes, .. } = current {
             nodes.insert(file_name.into(), file_node);
-            Ok(())
+            Ok(path)
         } else {
             Err("Parent is not a directory".to_string())
         }
@@ -231,7 +248,7 @@ impl FileSystem {
         message_id: MessageId,
         size: u64,
         mime_type: Option<String>,
-    ) -> Result<(), String> {
+    ) -> Result<PathBuf, String> {
         let file_node = FileSystemNode::new_file(message_id, size, mime_type);
         self.create_file_from_node(path, file_node)
     }
@@ -340,7 +357,7 @@ mod tests {
         let mut filesystem = FileSystem::default();
         filesystem
             .create_file(
-                &PathBuf::from("/dir-a/file-a.txt"),
+                &PathBuf::from("/dir-a/file-a"),
                 0,
                 0,
                 Some("text/plain".to_string()),
@@ -376,7 +393,7 @@ mod tests {
         let mut filesystem = FileSystem::new();
         filesystem
             .create_file(
-                &PathBuf::from("/dir-a/file-a.txt"),
+                &PathBuf::from("/dir-a/file-a"),
                 0,
                 0,
                 Some("text/plain".to_string()),
@@ -384,26 +401,26 @@ mod tests {
             .unwrap();
         filesystem
             .create_file(
-                &PathBuf::from("/dir-b/file-b.txt"),
+                &PathBuf::from("/dir-b/file-b"),
                 0,
                 0,
-                Some("text/plain".to_string()),
+                Some("image/png".to_string()),
             )
             .unwrap();
         filesystem
             .create_file(
-                &PathBuf::from("/dir-b/dir-bb/file-bb.txt"),
+                &PathBuf::from("/dir-b/dir-bb/file-bb"),
                 0,
                 0,
-                Some("text/plain".to_string()),
+                Some("application/sql".to_string()),
             )
             .unwrap();
         filesystem
             .create_file(
-                &PathBuf::from("/file-c.txt"),
+                &PathBuf::from("/file-c"),
                 0,
                 0,
-                Some("text/plain".to_string()),
+                Some("application/mp4".to_string()),
             )
             .unwrap();
 
@@ -412,7 +429,7 @@ mod tests {
             Ok(vec![
                 PathBuf::from("dir-a"),
                 PathBuf::from("dir-b"),
-                PathBuf::from("file-c.txt")
+                PathBuf::from("file-c.mp4")
             ])
         );
 
@@ -423,7 +440,7 @@ mod tests {
 
         assert_eq!(
             filesystem.ls(&PathBuf::from("/dir-b")),
-            Ok(vec![PathBuf::from("dir-bb"), PathBuf::from("file-b.txt")])
+            Ok(vec![PathBuf::from("dir-bb"), PathBuf::from("file-b.png")])
         );
 
         assert_eq!(
@@ -433,7 +450,7 @@ mod tests {
 
         assert_eq!(
             filesystem.ls(&PathBuf::from("/dir-b/dir-bb")),
-            Ok(vec![PathBuf::from("file-bb.txt")])
+            Ok(vec![PathBuf::from("file-bb.sql")])
         );
 
         assert_eq!(
@@ -455,7 +472,7 @@ mod tests {
             Err("Not a directory".to_string())
         );
         assert_eq!(
-            filesystem.ls(&PathBuf::from("/file-c.txt")),
+            filesystem.ls(&PathBuf::from("/file-c.mp4")),
             Err("Not a directory".to_string())
         );
         assert_eq!(
@@ -478,26 +495,39 @@ mod tests {
     #[rstest]
     fn filesystem_create_file() {
         let mut filesystem = FileSystem::new();
-        filesystem
+        let path = filesystem
             .create_file(
-                &PathBuf::from("/dir-a/file-a.txt"),
+                &PathBuf::from("/dir-a/file-a"),
                 0,
                 0,
                 Some("text/plain".to_string()),
             )
             .unwrap();
 
-        assert!(filesystem
-            .get_node(&PathBuf::from("/dir-a/file-a.txt"))
-            .unwrap()
-            .is_file());
+        let expected_path = PathBuf::from("/dir-a/file-a.txt");
+        assert_eq!(path, expected_path);
+        assert!(filesystem.get_node(&expected_path).unwrap().is_file());
+
+        // preserve extension
+        let path = filesystem
+            .create_file(
+                &PathBuf::from("/dir-a/file-b.mp3"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
+            .unwrap();
+
+        let expected_path = PathBuf::from("/dir-a/file-b.mp3");
+        assert_eq!(path, expected_path);
+        assert!(filesystem.get_node(&expected_path).unwrap().is_file());
     }
 
     #[rstest]
     fn filesystem_node_get_nodes() {
         let mut node = FileSystemNode::new_directory();
         node.get_nodes_mut().insert(
-            PathBuf::from("file-a.txt"),
+            PathBuf::from("file-a"),
             FileSystemNode::new_file(0, 0, None),
         );
 
@@ -519,7 +549,7 @@ mod tests {
         node.get_nodes_mut()
             .insert(PathBuf::from("dir-a"), FileSystemNode::new_directory());
         node.get_nodes_mut().insert(
-            PathBuf::from("file-a.txt"),
+            PathBuf::from("file-a"),
             FileSystemNode::new_file(0, 0, None),
         );
 
@@ -533,14 +563,14 @@ mod tests {
     fn filesystem_node_ls_files() {
         let mut node = FileSystemNode::new_directory();
         node.get_nodes_mut().insert(
-            PathBuf::from("file-a.txt"),
+            PathBuf::from("file-a"),
             FileSystemNode::new_file(0, 0, Some("text/plain".to_string())),
         );
 
         let files = node.ls_files().unwrap();
 
         assert_eq!(files.len(), 1);
-        assert_eq!(files[0], PathBuf::from("file-a.txt"));
+        assert_eq!(files[0], PathBuf::from("file-a"));
     }
 
     #[rstest]
@@ -580,12 +610,7 @@ mod tests {
         let mut filesystem = FileSystem::default();
         let path = PathBuf::from("/Documents");
         filesystem
-            .create_file(
-                &path.join("file-a.txt"),
-                0,
-                0,
-                Some("text/plain".to_string()),
-            )
+            .create_file(&path.join("file-a"), 0, 0, Some("text/plain".to_string()))
             .unwrap();
         let builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
 
@@ -629,7 +654,7 @@ mod tests {
         let mut filesystem = FileSystem::default();
         filesystem
             .create_file(
-                &PathBuf::from("/test_file.txt"),
+                &PathBuf::from("/test_file"),
                 1,
                 100,
                 Some("text/plain".to_string()),
