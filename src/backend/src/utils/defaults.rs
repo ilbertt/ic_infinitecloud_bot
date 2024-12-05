@@ -151,6 +151,10 @@ _Version: {VERSION}_"#
         current_path_text(path)
     }
 
+    pub fn explorer_file_message(file_name: String, path: String) -> String {
+        format!("File: *{file_name}*\nPath: `{path}`")
+    }
+
     pub fn rename_file_message(path: String) -> String {
         format!(
             r#"{}

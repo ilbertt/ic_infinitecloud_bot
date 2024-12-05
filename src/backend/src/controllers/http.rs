@@ -1,6 +1,6 @@
 use frankenstein::{
     EditMessageTextParams, InlineKeyboardMarkup, LinkPreviewOptions, MaybeInaccessibleMessage,
-    ParseMode, ReplyMarkup, SendMessageParams, Update, UpdateContent,
+    ParseMode, ReplyMarkup, ReplyParameters, SendMessageParams, Update, UpdateContent,
 };
 use ic_cdk::{query, update};
 use serde_json::Value;
@@ -22,9 +22,9 @@ use crate::{
         messages::{
             ask_directory_name_message, ask_file_name_message, back_inline_keyboard,
             create_file_message, created_directory_success_message, created_file_success_message,
-            delete_dir_message, delete_file_message, explorer_message, generic_error_message,
-            help_message, info_message, mkdir_message, prepare_move_file_message,
-            rename_file_message, start_message,
+            delete_dir_message, delete_file_message, explorer_file_message, explorer_message,
+            generic_error_message, help_message, info_message, mkdir_message,
+            prepare_move_file_message, rename_file_message, start_message,
         },
     },
 };
@@ -158,6 +158,19 @@ impl MessageParams {
         match self {
             Self::Send(params) => params.parse_mode = parse_mode,
             Self::Edit(params) => params.parse_mode = parse_mode,
+        }
+    }
+
+    fn set_reply_to_message_id(&mut self, message_id: MessageId) -> Result<(), String> {
+        match self {
+            Self::Send(params) => {
+                params.reply_parameters =
+                    Some(ReplyParameters::builder().message_id(message_id).build());
+                Ok(())
+            }
+            Self::Edit(_) => {
+                Err("editMessageText does not support reply_to_message_id".to_string())
+            }
         }
     }
 
@@ -590,6 +603,26 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         .with_files()?
                                         .build();
                                     edit_message_params.set_inline_keyboard_markup(keyboard);
+                                } else {
+                                    // reply to the file
+                                    let message_id = node
+                                        .file_message_id()
+                                        .ok_or_else(|| "Message id not found".to_string())?;
+                                    let file_name = path
+                                        .file_name()
+                                        .ok_or_else(|| "File name not found".to_string())?
+                                        .to_string_lossy()
+                                        .to_string();
+
+                                    let mut send_message_params =
+                                        MessageParams::new_send(chat_id.clone());
+                                    send_message_params.set_text(explorer_file_message(
+                                        file_name,
+                                        cs.current_path_string(),
+                                    ));
+                                    send_message_params.set_reply_to_message_id(message_id)?;
+
+                                    return Ok(send_message_params);
                                 }
 
                                 Ok(edit_message_params)
