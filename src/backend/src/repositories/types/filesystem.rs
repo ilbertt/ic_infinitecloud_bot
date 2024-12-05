@@ -640,6 +640,6 @@ mod tests {
         let keyboard = builder.with_files().unwrap().build();
 
         let file_paths = filesystem.ls(&path).unwrap();
-        assert_eq!(keyboard.inline_keyboard[0].len(), file_paths.len());
+        assert_eq!(keyboard.inline_keyboard.len(), file_paths.len());
     }
 }
