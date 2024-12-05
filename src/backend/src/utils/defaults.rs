@@ -83,7 +83,12 @@ _Version: {VERSION}_"#
         "Navigate to the directory in which you want to CREATE the new directory and click _{}_",
         CURRENT_DIR_BUTTON_TEXT
     );
+    const CREATE_FILE_TEXT: &str = formatcp!(
+        "Navigate to the directory in which you want to SAVE the new file and click _{}_",
+        CURRENT_DIR_BUTTON_TEXT
+    );
     const ASK_DIRECTORY_NAME_TEXT: &str = "Send me the name of the new DIRECTORY";
+    const ASK_FILE_NAME_TEXT: &str = "Send me the name of the new FILE";
     const RENAME_FILE_TEXT: &str = "Select the file you want to RENAME";
     const PREPARE_MOVE_FILE_TEXT: &str = "Select the file you want to MOVE";
     const DELETE_DIR_TEXT: &str = "Select the directory you want to DELETE";
@@ -107,6 +112,15 @@ _Version: {VERSION}_"#
         )
     }
 
+    pub fn create_file_message(path: String) -> String {
+        format!(
+            r#"{}
+
+{CREATE_FILE_TEXT}"#,
+            current_path_text(path)
+        )
+    }
+
     pub fn ask_directory_name_message(path: String) -> String {
         format!(
             r#"{}
@@ -116,8 +130,21 @@ _Version: {VERSION}_"#
         )
     }
 
+    pub fn ask_file_name_message(path: String) -> String {
+        format!(
+            r#"{}
+
+{ASK_FILE_NAME_TEXT}"#,
+            current_path_text(path)
+        )
+    }
+
     pub fn created_directory_success_message(dir_name: String, path: String) -> String {
         format!("Directory *{dir_name}* CREATED at `{path}`")
+    }
+
+    pub fn created_file_success_message(file_name: String, path: String) -> String {
+        format!("File *{file_name}* CREATED at `{path}`")
     }
 
     pub fn explorer_message(path: String) -> String {

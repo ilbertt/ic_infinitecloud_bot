@@ -8,9 +8,10 @@ use serde_json::Value;
 use crate::{
     custom_print,
     repositories::{
-        with_clear_action_on_error, ChatId, ChatSessionAction, ChatSessionRepositoryImpl,
-        ChatSessionWaitReply, Command, FilesystemRepositoryImpl, HeaderField, HttpRequest,
-        HttpResponse, HttpUpdateRequest, KeyboardDirectoryBuilder,
+        with_clear_action_on_error, ChatId, ChatSession, ChatSessionAction,
+        ChatSessionRepositoryImpl, ChatSessionWaitReply, Command, FileSystem, FileSystemNode,
+        FilesystemRepositoryImpl, HeaderField, HttpRequest, HttpResponse, HttpUpdateRequest,
+        KeyboardDirectoryBuilder, MessageId,
     },
     services::{
         ChatSessionService, ChatSessionServiceImpl, FilesystemService, FilesystemServiceImpl,
@@ -19,7 +20,8 @@ use crate::{
         filesystem::root_path,
         http::{error500, ok200},
         messages::{
-            ask_directory_name_message, back_inline_keyboard, created_directory_success_message,
+            ask_directory_name_message, ask_file_name_message, back_inline_keyboard,
+            create_file_message, created_directory_success_message, created_file_success_message,
             delete_dir_message, delete_file_message, explorer_message, generic_error_message,
             help_message, info_message, mkdir_message, prepare_move_file_message,
             rename_file_message, start_message,
@@ -340,36 +342,147 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                             Ok(send_message_params)
                         }
-                        Err(_) => match msg.text {
-                            Some(text) => {
-                                let current_action = cs.action().ok_or_else(|| {
-                                    "UpdateContent::Message: No action in chat session".to_string()
-                                })?;
+                        Err(_) => {
+                            if let Some(text) = msg.text {
+                                return match cs.action() {
+                                    Some(current_action) => match current_action {
+                                        ChatSessionAction::MkDir(Some(
+                                            ChatSessionWaitReply::DirectoryName,
+                                        )) => {
+                                            let dir_name = text;
+                                            let dir_path = cs.current_path().join(&dir_name);
+                                            fs.mkdir(&dir_path)?;
+                                            cs.reset();
 
-                                match current_action {
-                                    ChatSessionAction::MkDir(Some(
-                                        ChatSessionWaitReply::DirectoryName,
-                                    )) => {
-                                        let dir_name = text;
-                                        let dir_path = cs.current_path().join(&dir_name);
-                                        fs.mkdir(&dir_path)?;
-                                        cs.reset();
+                                            let mut send_message_params =
+                                                MessageParams::new_send(chat_id.clone());
+                                            send_message_params.set_text(
+                                                created_directory_success_message(
+                                                    dir_name,
+                                                    dir_path.to_string_lossy().to_string(),
+                                                ),
+                                            );
+                                            Ok(send_message_params)
+                                        }
+                                        ChatSessionAction::SaveFile(Some(file_node), Some(_)) => {
+                                            let file_name = text;
+                                            let dir_path = cs.current_path();
+                                            let file_path = dir_path.join(&file_name);
+                                            fs.create_file_from_node(&file_path, file_node)?;
+                                            let mut send_message_params =
+                                                MessageParams::new_send(chat_id.clone());
+                                            send_message_params.set_text(
+                                                created_file_success_message(
+                                                    file_name,
+                                                    dir_path.to_string_lossy().to_string(),
+                                                ),
+                                            );
+                                            Ok(send_message_params)
+                                        }
+                                        _ => Ok(MessageParams::generic_error(chat_id.clone())),
+                                    },
+                                    None => process_file_message(
+                                        cs,
+                                        &fs,
+                                        chat_id.clone(),
+                                        msg.message_id,
+                                        Some(text.len().try_into().unwrap()),
+                                        Some("tg+text".to_string()),
+                                    ),
+                                };
+                            };
 
-                                        let mut send_message_params =
-                                            MessageParams::new_send(chat_id.clone());
-                                        send_message_params.set_text(
-                                            created_directory_success_message(
-                                                dir_name,
-                                                dir_path.to_string_lossy().to_string(),
-                                            ),
-                                        );
-                                        Ok(send_message_params)
-                                    }
-                                    _ => Ok(MessageParams::generic_error(chat_id.clone())),
-                                }
+                            if let Some(document) = msg.document {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    document.file_size,
+                                    document.mime_type,
+                                );
                             }
-                            None => Err("No text in message".to_string()),
-                        },
+
+                            if let Some(photos) = msg.photo {
+                                let photo = photos.first().unwrap();
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    photo.file_size,
+                                    Some("jpeg".to_string()),
+                                );
+                            }
+
+                            if let Some(video) = msg.video {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    video.file_size,
+                                    video.mime_type,
+                                );
+                            }
+
+                            if let Some(video_note) = msg.video_note {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    video_note.file_size,
+                                    Some("tg+video_note".to_string()),
+                                );
+                            }
+
+                            if let Some(audio) = msg.audio {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    audio.file_size,
+                                    audio.mime_type,
+                                );
+                            }
+
+                            if let Some(voice) = msg.voice {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    voice.file_size,
+                                    voice.mime_type,
+                                );
+                            }
+
+                            if let Some(sticker) = msg.sticker {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    sticker.file_size,
+                                    Some("tg+sticker".to_string()),
+                                );
+                            }
+
+                            if msg.contact.is_some() {
+                                return process_file_message(
+                                    cs,
+                                    &fs,
+                                    chat_id.clone(),
+                                    msg.message_id,
+                                    None,
+                                    Some("tg+contact".to_string()),
+                                );
+                            }
+
+                            Ok(MessageParams::generic_error(chat_id.clone()))
+                        }
                     }
                 })
             }
@@ -409,6 +522,18 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                 )));
                                 edit_message_params
                                     .set_text(ask_directory_name_message(cs.current_path_string()));
+                                edit_message_params
+                                    .set_inline_keyboard_markup(back_inline_keyboard());
+
+                                Ok(edit_message_params)
+                            }
+                            ChatSessionAction::SaveFile(Some(file_node), None) => {
+                                cs.set_action(ChatSessionAction::SaveFile(
+                                    Some(file_node),
+                                    Some(ChatSessionWaitReply::FileName),
+                                ));
+                                edit_message_params
+                                    .set_text(ask_file_name_message(cs.current_path_string()));
                                 edit_message_params
                                     .set_inline_keyboard_markup(back_inline_keyboard());
 
@@ -480,6 +605,17 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                 edit_message_params.set_inline_keyboard_markup(keyboard);
                                 Ok(edit_message_params)
                             }
+                            ChatSessionAction::SaveFile(Some(_), None) => {
+                                cs.set_current_path(path.clone());
+                                edit_message_params
+                                    .set_text(create_file_message(cs.current_path_string()));
+
+                                let keyboard = KeyboardDirectoryBuilder::new(&fs, &path)?
+                                    .with_current_dir_button()
+                                    .build();
+                                edit_message_params.set_inline_keyboard_markup(keyboard);
+                                Ok(edit_message_params)
+                            }
                             _ => Err("current action not supported by this action".to_string()),
                         },
                         ChatSessionAction::Back => match current_action {
@@ -497,12 +633,27 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
                                 Ok(edit_message_params)
                             }
+                            ChatSessionAction::SaveFile(Some(file_node), Some(_)) => {
+                                cs.set_action(ChatSessionAction::SaveFile(Some(file_node), None));
+
+                                edit_message_params
+                                    .set_text(create_file_message(cs.current_path_string()));
+
+                                let keyboard =
+                                    KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
+                                        .with_current_dir_button()
+                                        .build();
+                                edit_message_params.set_inline_keyboard_markup(keyboard);
+
+                                Ok(edit_message_params)
+                            }
                             _ => Err("current action not supported by this action".to_string()),
                         },
                         ChatSessionAction::DeleteDir
                         | ChatSessionAction::Explorer
                         | ChatSessionAction::PrepareMoveFile
                         | ChatSessionAction::DeleteFile
+                        | ChatSessionAction::SaveFile(_, _)
                         | ChatSessionAction::RenameFile(_)
                         | ChatSessionAction::MkDir(_) => Err("invalid action".to_string()),
                     }
@@ -517,4 +668,28 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
 
         res.map_err(|err| (err, Some(chat_id.clone())))
     }
+}
+
+fn process_file_message(
+    chat_session: &mut ChatSession,
+    fs: &FileSystem,
+    chat_id: ChatId,
+    message_id: MessageId,
+    file_size: Option<u64>,
+    mime_type: Option<String>,
+) -> Result<MessageParams, String> {
+    // we reset the chat session to start the flow of saving a new file
+    chat_session.reset();
+
+    let file_node = FileSystemNode::new_file(message_id, file_size.unwrap_or(0), mime_type);
+    chat_session.set_action(ChatSessionAction::SaveFile(Some(file_node), None));
+
+    let mut send_message_params = MessageParams::new_send(chat_id.clone());
+    send_message_params.set_text(create_file_message(chat_session.current_path_string()));
+    let keyboard = KeyboardDirectoryBuilder::new(fs, chat_session.current_path())?
+        .with_current_dir_button()
+        .build();
+    send_message_params.set_inline_keyboard_markup(keyboard);
+
+    Ok(send_message_params)
 }

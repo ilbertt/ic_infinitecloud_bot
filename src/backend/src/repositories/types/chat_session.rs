@@ -15,6 +15,8 @@ use crate::{
     },
 };
 
+use super::FileSystemNode;
+
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub enum ChatSessionWaitReply {
     DirectoryName,
@@ -24,6 +26,7 @@ pub enum ChatSessionWaitReply {
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub enum ChatSessionAction {
     MkDir(Option<ChatSessionWaitReply>),
+    SaveFile(Option<FileSystemNode>, Option<ChatSessionWaitReply>),
     CurrentDir,
     ParentDir,
     DeleteDir,
@@ -39,6 +42,7 @@ impl ChatSessionAction {
     pub fn beautified(&self) -> String {
         match self {
             ChatSessionAction::MkDir(_) => MKDIR_BUTTON_TEXT.to_string(),
+            ChatSessionAction::SaveFile(_, _) => "".to_string(),
             ChatSessionAction::CurrentDir => CURRENT_DIR_BUTTON_TEXT.to_string(),
             ChatSessionAction::ParentDir => PARENT_DIR_BUTTON_TEXT.to_string(),
             ChatSessionAction::DeleteDir => DELETE_DIR_BUTTON_TEXT.to_string(),
@@ -65,6 +69,7 @@ impl fmt::Display for ChatSessionAction {
             "{}",
             match self {
                 ChatSessionAction::MkDir(_) => "mkdir-action".to_string(),
+                ChatSessionAction::SaveFile(_, _) => "save-file-action".to_string(),
                 ChatSessionAction::CurrentDir => ".".to_string(),
                 ChatSessionAction::ParentDir => "..".to_string(),
                 ChatSessionAction::DeleteDir => "delete-dir-action".to_string(),
@@ -83,6 +88,7 @@ impl From<String> for ChatSessionAction {
     fn from(val: String) -> Self {
         match val.as_str() {
             "mkdir-action" => ChatSessionAction::MkDir(None),
+            "save-file-action" => ChatSessionAction::SaveFile(None, None),
             "." => ChatSessionAction::CurrentDir,
             ".." => ChatSessionAction::ParentDir,
             "delete-dir-action" => ChatSessionAction::DeleteDir,

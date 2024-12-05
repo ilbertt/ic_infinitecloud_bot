@@ -15,7 +15,7 @@ use crate::utils::{
     path_button,
 };
 
-pub type MessageId = u64;
+pub type MessageId = i32;
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub enum FileSystemNode {
@@ -23,6 +23,7 @@ pub enum FileSystemNode {
         message_id: MessageId,
         created_at: u64,
         size: u64,
+        mime_type: Option<String>,
     },
     Directory {
         created_at: u64,
@@ -33,11 +34,12 @@ pub enum FileSystemNode {
 pub type FileSystemNodes = BTreeMap<PathBuf, FileSystemNode>;
 
 impl FileSystemNode {
-    fn new_file(message_id: MessageId, size: u64) -> Self {
+    pub fn new_file(message_id: MessageId, size: u64, mime_type: Option<String>) -> Self {
         Self::File {
             message_id,
             created_at: get_current_time(),
             size,
+            mime_type,
         }
     }
 
@@ -195,11 +197,10 @@ impl FileSystem {
         }
     }
 
-    pub fn create_file(
+    pub fn create_file_from_node(
         &mut self,
         path: &Path,
-        message_id: MessageId,
-        size: u64,
+        file_node: FileSystemNode,
     ) -> Result<(), String> {
         let parent = path.parent().ok_or("Invalid path")?;
         let file_name = path.file_name().ok_or("Invalid file name")?;
@@ -217,11 +218,22 @@ impl FileSystem {
         }
 
         if let FileSystemNode::Directory { nodes, .. } = current {
-            nodes.insert(file_name.into(), FileSystemNode::new_file(message_id, size));
+            nodes.insert(file_name.into(), file_node);
             Ok(())
         } else {
             Err("Parent is not a directory".to_string())
         }
+    }
+
+    pub fn create_file(
+        &mut self,
+        path: &Path,
+        message_id: MessageId,
+        size: u64,
+        mime_type: Option<String>,
+    ) -> Result<(), String> {
+        let file_node = FileSystemNode::new_file(message_id, size, mime_type);
+        self.create_file_from_node(path, file_node)
     }
 }
 
@@ -327,7 +339,12 @@ mod tests {
     fn filesystem_get_node_file() {
         let mut filesystem = FileSystem::default();
         filesystem
-            .create_file(&PathBuf::from("/dir-a/file-a.txt"), 0, 0)
+            .create_file(
+                &PathBuf::from("/dir-a/file-a.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
 
         let node = filesystem
@@ -358,16 +375,36 @@ mod tests {
     fn filesystem_ls() {
         let mut filesystem = FileSystem::new();
         filesystem
-            .create_file(&PathBuf::from("/dir-a/file-a.txt"), 0, 0)
+            .create_file(
+                &PathBuf::from("/dir-a/file-a.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
         filesystem
-            .create_file(&PathBuf::from("/dir-b/file-b.txt"), 0, 0)
+            .create_file(
+                &PathBuf::from("/dir-b/file-b.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
         filesystem
-            .create_file(&PathBuf::from("/dir-b/dir-bb/file-bb.txt"), 0, 0)
+            .create_file(
+                &PathBuf::from("/dir-b/dir-bb/file-bb.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
         filesystem
-            .create_file(&PathBuf::from("/file-c.txt"), 0, 0)
+            .create_file(
+                &PathBuf::from("/file-c.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
 
         assert_eq!(
@@ -442,7 +479,12 @@ mod tests {
     fn filesystem_create_file() {
         let mut filesystem = FileSystem::new();
         filesystem
-            .create_file(&PathBuf::from("/dir-a/file-a.txt"), 0, 0)
+            .create_file(
+                &PathBuf::from("/dir-a/file-a.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
 
         assert!(filesystem
@@ -454,8 +496,10 @@ mod tests {
     #[rstest]
     fn filesystem_node_get_nodes() {
         let mut node = FileSystemNode::new_directory();
-        node.get_nodes_mut()
-            .insert(PathBuf::from("file-a.txt"), FileSystemNode::new_file(0, 0));
+        node.get_nodes_mut().insert(
+            PathBuf::from("file-a.txt"),
+            FileSystemNode::new_file(0, 0, None),
+        );
 
         let nodes = node.get_nodes();
 
@@ -465,7 +509,7 @@ mod tests {
     #[rstest]
     #[should_panic(expected = "Not a directory")]
     fn filesystem_node_get_nodes_file_panic() {
-        let node = FileSystemNode::new_file(0, 0);
+        let node = FileSystemNode::new_file(0, 0, None);
         node.get_nodes();
     }
 
@@ -474,8 +518,10 @@ mod tests {
         let mut node = FileSystemNode::new_directory();
         node.get_nodes_mut()
             .insert(PathBuf::from("dir-a"), FileSystemNode::new_directory());
-        node.get_nodes_mut()
-            .insert(PathBuf::from("file-a.txt"), FileSystemNode::new_file(0, 0));
+        node.get_nodes_mut().insert(
+            PathBuf::from("file-a.txt"),
+            FileSystemNode::new_file(0, 0, None),
+        );
 
         let directories = node.ls_directories().unwrap();
 
@@ -486,8 +532,10 @@ mod tests {
     #[rstest]
     fn filesystem_node_ls_files() {
         let mut node = FileSystemNode::new_directory();
-        node.get_nodes_mut()
-            .insert(PathBuf::from("file-a.txt"), FileSystemNode::new_file(0, 0));
+        node.get_nodes_mut().insert(
+            PathBuf::from("file-a.txt"),
+            FileSystemNode::new_file(0, 0, Some("text/plain".to_string())),
+        );
 
         let files = node.ls_files().unwrap();
 
@@ -499,13 +547,13 @@ mod tests {
     fn filesystem_node_is_directory() {
         let node = FileSystemNode::new_directory();
         assert!(node.is_directory());
-        let node = FileSystemNode::new_file(0, 0);
+        let node = FileSystemNode::new_file(0, 0, Some("text/plain".to_string()));
         assert!(!node.is_directory());
     }
 
     #[rstest]
     fn filesystem_node_is_file() {
-        let node = FileSystemNode::new_file(0, 0);
+        let node = FileSystemNode::new_file(0, 0, Some("text/plain".to_string()));
         assert!(node.is_file());
         let node = FileSystemNode::new_directory();
         assert!(!node.is_file());
@@ -532,7 +580,12 @@ mod tests {
         let mut filesystem = FileSystem::default();
         let path = PathBuf::from("/Documents");
         filesystem
-            .create_file(&path.join("file-a.txt"), 0, 0)
+            .create_file(
+                &path.join("file-a.txt"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
         let builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
 
@@ -575,7 +628,12 @@ mod tests {
     fn test_keyboard_directory_builder_with_files() {
         let mut filesystem = FileSystem::default();
         filesystem
-            .create_file(&PathBuf::from("/test_file.txt"), 1, 100)
+            .create_file(
+                &PathBuf::from("/test_file.txt"),
+                1,
+                100,
+                Some("text/plain".to_string()),
+            )
             .unwrap();
         let path = PathBuf::from("/");
         let mut builder = KeyboardDirectoryBuilder::new(&filesystem, &path).unwrap();
