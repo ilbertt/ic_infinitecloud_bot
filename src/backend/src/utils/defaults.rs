@@ -1,5 +1,7 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub const TG_FILE_MIME_TYPE_PREFIX: &str = "tg+";
+
 pub mod messages {
     use const_format::formatcp;
     use frankenstein::{InlineKeyboardButton, InlineKeyboardMarkup};

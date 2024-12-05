@@ -26,6 +26,7 @@ use crate::{
             generic_error_message, help_message, info_message, mkdir_message,
             prepare_move_file_message, rename_file_message, start_message,
         },
+        TG_FILE_MIME_TYPE_PREFIX,
     },
 };
 
@@ -405,7 +406,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                         chat_id.clone(),
                                         msg.message_id,
                                         Some(text.len().try_into().unwrap()),
-                                        Some("tg+text".to_string()),
+                                        Some(format!("{TG_FILE_MIME_TYPE_PREFIX}text")),
                                     ),
                                 };
                             };
@@ -451,7 +452,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                     chat_id.clone(),
                                     msg.message_id,
                                     video_note.file_size,
-                                    Some("tg+video_note".to_string()),
+                                    Some(format!("{TG_FILE_MIME_TYPE_PREFIX}video_note")),
                                 );
                             }
 
@@ -484,7 +485,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                     chat_id.clone(),
                                     msg.message_id,
                                     sticker.file_size,
-                                    Some("tg+sticker".to_string()),
+                                    Some(format!("{TG_FILE_MIME_TYPE_PREFIX}sticker")),
                                 );
                             }
 
@@ -495,7 +496,7 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
                                     chat_id.clone(),
                                     msg.message_id,
                                     None,
-                                    Some("tg+contact".to_string()),
+                                    Some(format!("{TG_FILE_MIME_TYPE_PREFIX}contact")),
                                 );
                             }
 

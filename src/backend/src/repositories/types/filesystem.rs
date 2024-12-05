@@ -13,7 +13,7 @@ use crate::utils::{
     filesystem::root_path,
     get_current_time, is_absolute,
     messages::{current_dir_inline_button, delete_dir_inline_button, parent_dir_inline_button},
-    path_button,
+    path_button, TG_FILE_MIME_TYPE_PREFIX,
 };
 
 pub type MessageId = i32;
@@ -214,8 +214,11 @@ impl FileSystem {
         let mut path = path.to_path_buf();
 
         if path.extension().is_none() {
-            if let Some(extension) = file_node.file_mime_type().and_then(mime2ext) {
-                path = path.with_extension(extension);
+            if let Some(mut ext) = file_node.file_mime_type() {
+                if !ext.starts_with(TG_FILE_MIME_TYPE_PREFIX) {
+                    ext = mime2ext(&ext).unwrap_or_default().to_string();
+                }
+                path = path.with_extension(ext);
             }
         }
 
@@ -503,7 +506,6 @@ mod tests {
                 Some("text/plain".to_string()),
             )
             .unwrap();
-
         let expected_path = PathBuf::from("/dir-a/file-a.txt");
         assert_eq!(path, expected_path);
         assert!(filesystem.get_node(&expected_path).unwrap().is_file());
@@ -517,8 +519,20 @@ mod tests {
                 Some("text/plain".to_string()),
             )
             .unwrap();
-
         let expected_path = PathBuf::from("/dir-a/file-b.mp3");
+        assert_eq!(path, expected_path);
+        assert!(filesystem.get_node(&expected_path).unwrap().is_file());
+
+        // do not parse tg+ mime types
+        let path = filesystem
+            .create_file(
+                &PathBuf::from("/dir-a/file-c"),
+                0,
+                0,
+                Some(format!("{TG_FILE_MIME_TYPE_PREFIX}video_note")),
+            )
+            .unwrap();
+        let expected_path = PathBuf::from("/dir-a/file-c.tg+video_note");
         assert_eq!(path, expected_path);
         assert!(filesystem.get_node(&expected_path).unwrap().is_file());
     }
