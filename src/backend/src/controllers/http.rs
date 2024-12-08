@@ -1,9 +1,5 @@
-use frankenstein::{
-    EditMessageTextParams, InlineKeyboardMarkup, LinkPreviewOptions, MaybeInaccessibleMessage,
-    ParseMode, ReplyMarkup, ReplyParameters, SendMessageParams, Update, UpdateContent,
-};
+use frankenstein::{MaybeInaccessibleMessage, Update, UpdateContent};
 use ic_cdk::{query, update};
-use serde_json::Value;
 
 use crate::{
     custom_print,
@@ -23,10 +19,10 @@ use crate::{
             ask_directory_name_message, ask_file_name_message, back_inline_keyboard,
             create_file_message, created_directory_success_message, created_file_success_message,
             delete_dir_message, delete_file_message, explorer_file_message, explorer_message,
-            generic_error_message, help_message, info_message, mkdir_message,
-            prepare_move_file_message, rename_file_message, start_message,
+            help_message, info_message, mkdir_message, prepare_move_file_message,
+            rename_file_message, start_message,
         },
-        TG_FILE_MIME_TYPE_PREFIX,
+        MessageParams, TG_FILE_MIME_TYPE_PREFIX,
     },
 };
 
@@ -62,124 +58,6 @@ impl Default
             FilesystemServiceImpl::default(),
             ChatSessionServiceImpl::default(),
         )
-    }
-}
-
-fn add_method(value: &mut Value, method: String) {
-    if let Value::Object(m) = value {
-        m.insert("method".to_string(), Value::String(method));
-    }
-}
-
-fn default_link_preview_options() -> LinkPreviewOptions {
-    LinkPreviewOptions {
-        is_disabled: Some(true),
-        url: None,
-        prefer_small_media: None,
-        prefer_large_media: None,
-        show_above_text: None,
-    }
-}
-
-fn default_send_message_params(chat_id: ChatId) -> SendMessageParams {
-    #[allow(deprecated)]
-    // MarkdownV2 does not work, we have to use the deprecated Markdown variant
-    SendMessageParams::builder()
-        .chat_id(chat_id.into_tg_chat_id())
-        .parse_mode(ParseMode::Markdown)
-        .link_preview_options(default_link_preview_options())
-        .text("")
-        .build()
-}
-
-fn default_edit_message_params(chat_id: ChatId, message_id: i32) -> EditMessageTextParams {
-    #[allow(deprecated)]
-    // MarkdownV2 does not work, we have to use the deprecated Markdown variant
-    EditMessageTextParams::builder()
-        .chat_id(chat_id.into_tg_chat_id())
-        .message_id(message_id)
-        .parse_mode(ParseMode::Markdown)
-        .link_preview_options(default_link_preview_options())
-        .text("")
-        .build()
-}
-
-enum MessageParams {
-    Send(SendMessageParams),
-    Edit(EditMessageTextParams),
-}
-
-impl MessageParams {
-    fn new_send(chat_id: ChatId) -> Self {
-        let params = default_send_message_params(chat_id);
-        MessageParams::Send(params)
-    }
-
-    fn new_edit(chat_id: ChatId, message_id: i32) -> Self {
-        let params = default_edit_message_params(chat_id, message_id);
-        MessageParams::Edit(params)
-    }
-
-    fn method(&self) -> String {
-        match self {
-            Self::Send(_) => "sendMessage".to_string(),
-            Self::Edit(_) => "editMessageText".to_string(),
-        }
-    }
-
-    fn json_value(&self) -> Result<Value, String> {
-        let mut value = match self {
-            Self::Send(params) => serde_json::to_value(params),
-            Self::Edit(params) => serde_json::to_value(params),
-        }
-        .map_err(|err| err.to_string())?;
-
-        add_method(&mut value, self.method());
-
-        Ok(value)
-    }
-
-    fn set_text(&mut self, text: String) {
-        match self {
-            Self::Send(params) => params.text = text,
-            Self::Edit(params) => params.text = text,
-        }
-    }
-
-    fn set_inline_keyboard_markup(&mut self, keyboard: InlineKeyboardMarkup) {
-        match self {
-            Self::Send(params) => {
-                params.reply_markup = Some(ReplyMarkup::InlineKeyboardMarkup(keyboard))
-            }
-            Self::Edit(params) => params.reply_markup = Some(keyboard),
-        }
-    }
-
-    fn set_parse_mode(&mut self, parse_mode: Option<ParseMode>) {
-        match self {
-            Self::Send(params) => params.parse_mode = parse_mode,
-            Self::Edit(params) => params.parse_mode = parse_mode,
-        }
-    }
-
-    fn set_reply_to_message_id(&mut self, message_id: MessageId) -> Result<(), String> {
-        match self {
-            Self::Send(params) => {
-                params.reply_parameters =
-                    Some(ReplyParameters::builder().message_id(message_id).build());
-                Ok(())
-            }
-            Self::Edit(_) => {
-                Err("editMessageText does not support reply_to_message_id".to_string())
-            }
-        }
-    }
-
-    fn generic_error(chat_id: ChatId) -> Self {
-        let mut params = Self::new_send(chat_id);
-        params.set_text(generic_error_message());
-        params.set_parse_mode(None);
-        params
     }
 }
 
@@ -227,10 +105,10 @@ impl<F: FilesystemService, C: ChatSessionService> HttpController<F, C> {
             Err((err, Some(chat_id))) => {
                 let err_msg = format!("Error processing update content: {}", err);
                 custom_print!("{}", err_msg);
-                let mut params = default_send_message_params(chat_id);
-                params.text = err_msg;
-                params.parse_mode = None;
-                http_response(&MessageParams::Send(params))
+                let mut params = MessageParams::new_send(chat_id);
+                params.set_text(err_msg);
+                params.set_parse_mode(None);
+                http_response(&params)
             }
         }
         .unwrap_or_else(|err| {
