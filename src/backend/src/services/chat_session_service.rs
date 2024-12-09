@@ -419,41 +419,66 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                     }
                     _ => action_not_supported_error(),
                 },
-                ChatSessionAction::ParentDir => match current_action {
-                    ChatSessionAction::Explorer => {
-                        let current_path = cs.current_path().clone();
-                        let root_path = root_path();
-                        let path = current_path.parent().unwrap_or(root_path.as_ref());
-                        let node = fs.get_node(path)?;
+                ChatSessionAction::ParentDir => {
+                    let current_path = cs.current_path().clone();
+                    let root_path = root_path();
+                    let parent_path = current_path.parent().unwrap_or(root_path.as_ref());
 
-                        if node.is_directory() {
-                            cs.set_current_path(path.to_path_buf());
+                    match current_action {
+                        ChatSessionAction::Explorer => {
+                            let node = fs.get_node(parent_path)?;
+
+                            if node.is_directory() {
+                                cs.set_current_path(parent_path.to_path_buf());
+                                edit_message_params
+                                    .set_text(explorer_message(cs.current_path_string()));
+
+                                let keyboard = KeyboardDirectoryBuilder::new(&fs, parent_path)?
+                                    .with_files()?
+                                    .build();
+                                edit_message_params.set_inline_keyboard_markup(keyboard);
+                            } else {
+                                // should never happen
+                                return Err("Parent is not a directory".to_string());
+                            }
+
+                            Ok(edit_message_params)
+                        }
+                        ChatSessionAction::MkDir(_) => {
+                            cs.set_current_path(parent_path.to_path_buf());
+                            edit_message_params.set_text(mkdir_message(cs.current_path_string()));
+
+                            let keyboard = KeyboardDirectoryBuilder::new(&fs, parent_path)?
+                                .with_current_dir_button()
+                                .build();
+                            edit_message_params.set_inline_keyboard_markup(keyboard);
+                            Ok(edit_message_params)
+                        }
+                        ChatSessionAction::SaveFile(Some(_), None) => {
+                            cs.set_current_path(parent_path.to_path_buf());
                             edit_message_params
-                                .set_text(explorer_message(cs.current_path_string()));
+                                .set_text(create_file_message(cs.current_path_string()));
 
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, path)?
+                            let keyboard = KeyboardDirectoryBuilder::new(&fs, parent_path)?
+                                .with_current_dir_button()
+                                .build();
+                            edit_message_params.set_inline_keyboard_markup(keyboard);
+                            Ok(edit_message_params)
+                        }
+                        ChatSessionAction::RenameFile(_) => {
+                            cs.set_current_path(parent_path.to_path_buf());
+                            edit_message_params
+                                .set_text(rename_file_message(cs.current_path_string()));
+
+                            let keyboard = KeyboardDirectoryBuilder::new(&fs, parent_path)?
                                 .with_files()?
                                 .build();
                             edit_message_params.set_inline_keyboard_markup(keyboard);
+                            Ok(edit_message_params)
                         }
-
-                        Ok(edit_message_params)
+                        _ => action_not_supported_error(),
                     }
-                    ChatSessionAction::MkDir(_) => {
-                        let current_path = cs.current_path().clone();
-                        let root_path = root_path();
-                        let path = current_path.parent().unwrap_or(root_path.as_ref());
-                        cs.set_current_path(path.to_path_buf());
-                        edit_message_params.set_text(mkdir_message(cs.current_path_string()));
-
-                        let keyboard = KeyboardDirectoryBuilder::new(&fs, path)?
-                            .with_current_dir_button()
-                            .build();
-                        edit_message_params.set_inline_keyboard_markup(keyboard);
-                        Ok(edit_message_params)
-                    }
-                    _ => action_not_supported_error(),
-                },
+                }
                 ChatSessionAction::FileOrDir(path) => match current_action {
                     ChatSessionAction::Explorer => {
                         let node = fs.get_node(&path)?;
