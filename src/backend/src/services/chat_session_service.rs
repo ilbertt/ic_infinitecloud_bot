@@ -10,11 +10,12 @@ use crate::{
     utils::{
         filesystem::root_path,
         messages::{
-            ask_directory_name_message, ask_file_name_message, back_inline_keyboard,
-            create_file_message, created_directory_success_message, created_file_success_message,
-            delete_dir_message, delete_file_message, explorer_file_message, explorer_message,
-            help_message, info_message, mkdir_message, prepare_move_file_message,
-            rename_file_message, start_message,
+            ask_directory_name_message, ask_file_name_message, ask_rename_file_message,
+            back_inline_keyboard, create_file_message, created_directory_success_message,
+            created_file_success_message, delete_dir_message, delete_file_message,
+            explorer_file_message, explorer_message, help_message, info_message, mkdir_message,
+            prepare_move_file_message, rename_file_message, renamed_file_success_message,
+            start_message,
         },
         MessageParams, TG_FILE_MIME_TYPE_PREFIX,
     },
@@ -205,7 +206,10 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                                     );
                                     Ok(send_message_params)
                                 }
-                                ChatSessionAction::SaveFile(Some(file_node), Some(_)) => {
+                                ChatSessionAction::SaveFile(
+                                    Some(file_node),
+                                    Some(ChatSessionWaitReply::FileName),
+                                ) => {
                                     let file_name = text;
                                     let dir_path = cs.current_path();
                                     let file_path = dir_path.join(file_name);
@@ -220,6 +224,27 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                                             .to_string_lossy()
                                             .to_string(),
                                         dir_path.to_string_lossy().to_string(),
+                                    ));
+                                    Ok(send_message_params)
+                                }
+                                ChatSessionAction::RenameFile(Some(
+                                    ChatSessionWaitReply::FileName,
+                                )) => {
+                                    let new_file_name = text;
+                                    let from_path = cs.current_path();
+                                    let mut to_path = from_path.clone();
+                                    to_path.set_file_name(&new_file_name);
+                                    fs.mv(from_path, &to_path)?;
+                                    let mut send_message_params =
+                                        MessageParams::new_send(chat_id.clone());
+                                    send_message_params.set_text(renamed_file_success_message(
+                                        from_path
+                                            .file_name()
+                                            .unwrap()
+                                            .to_string_lossy()
+                                            .to_string(),
+                                        new_file_name,
+                                        from_path.parent().unwrap().to_string_lossy().to_string(),
                                     ));
                                     Ok(send_message_params)
                                 }
@@ -371,7 +396,7 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
 
             match action {
                 ChatSessionAction::CurrentDir => match current_action {
-                    ChatSessionAction::MkDir(_) => {
+                    ChatSessionAction::MkDir(None) => {
                         cs.set_action(ChatSessionAction::MkDir(Some(
                             ChatSessionWaitReply::DirectoryName,
                         )));
@@ -392,7 +417,7 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
 
                         Ok(edit_message_params)
                     }
-                    _ => Err("current action not supported by this action".to_string()),
+                    _ => action_not_supported_error(),
                 },
                 ChatSessionAction::ParentDir => match current_action {
                     ChatSessionAction::Explorer => {
@@ -427,7 +452,7 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                         edit_message_params.set_inline_keyboard_markup(keyboard);
                         Ok(edit_message_params)
                     }
-                    _ => Err("current action not supported by this action".to_string()),
+                    _ => action_not_supported_error(),
                 },
                 ChatSessionAction::FileOrDir(path) => match current_action {
                     ChatSessionAction::Explorer => {
@@ -485,7 +510,47 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                         edit_message_params.set_inline_keyboard_markup(keyboard);
                         Ok(edit_message_params)
                     }
-                    _ => Err("current action not supported by this action".to_string()),
+                    ChatSessionAction::RenameFile(None) => {
+                        let node = fs.get_node(&path)?;
+
+                        if node.is_directory() {
+                            cs.set_current_path(path.clone());
+                            edit_message_params
+                                .set_text(rename_file_message(cs.current_path_string()));
+
+                            let keyboard = KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
+                                .with_files()?
+                                .build();
+                            edit_message_params.set_inline_keyboard_markup(keyboard);
+                        } else {
+                            // reply to the file
+                            let message_id = node
+                                .file_message_id()
+                                .ok_or_else(|| "Message id not found".to_string())?;
+                            let file_name = path
+                                .file_name()
+                                .ok_or_else(|| "File name not found".to_string())?
+                                .to_string_lossy()
+                                .to_string();
+
+                            let mut send_message_params = MessageParams::new_send(chat_id.clone());
+                            send_message_params.set_text(ask_rename_file_message(
+                                file_name,
+                                cs.current_path_string(),
+                            ));
+                            send_message_params.set_reply_to_message_id(message_id)?;
+
+                            cs.set_current_path(path);
+                            cs.set_action(ChatSessionAction::RenameFile(Some(
+                                ChatSessionWaitReply::FileName,
+                            )));
+
+                            return Ok(send_message_params);
+                        }
+
+                        Ok(edit_message_params)
+                    }
+                    _ => action_not_supported_error(),
                 },
                 ChatSessionAction::Back => match current_action {
                     ChatSessionAction::MkDir(Some(_)) => {
@@ -512,7 +577,7 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
 
                         Ok(edit_message_params)
                     }
-                    _ => Err("current action not supported by this action".to_string()),
+                    _ => action_not_supported_error(),
                 },
                 ChatSessionAction::DeleteDir
                 | ChatSessionAction::Explorer
@@ -572,4 +637,8 @@ fn process_file_message(
     send_message_params.set_inline_keyboard_markup(keyboard);
 
     Ok(send_message_params)
+}
+
+fn action_not_supported_error() -> Result<MessageParams, String> {
+    Err("current action not supported by this action".to_string())
 }

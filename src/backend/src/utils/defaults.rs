@@ -141,12 +141,24 @@ _Version: {VERSION}_"#
         )
     }
 
+    pub fn ask_rename_file_message(file_name: String, path: String) -> String {
+        format!("RENAME *{file_name}* at `{path}`\n\nSend me the new NAME:")
+    }
+
     pub fn created_directory_success_message(dir_name: String, path: String) -> String {
         format!("Directory *{dir_name}* CREATED at `{path}`")
     }
 
     pub fn created_file_success_message(file_name: String, path: String) -> String {
         format!("File *{file_name}* CREATED at `{path}`")
+    }
+
+    pub fn renamed_file_success_message(
+        old_file_name: String,
+        new_file_name: String,
+        path: String,
+    ) -> String {
+        format!("File *{old_file_name}* RENAMED.\n\nNew name: *{new_file_name}*\nPath: `{path}`")
     }
 
     pub fn explorer_message(path: String) -> String {

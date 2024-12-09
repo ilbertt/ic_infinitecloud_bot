@@ -173,6 +173,51 @@ impl FileSystem {
         Ok(current)
     }
 
+    fn insert_node(&mut self, path: &Path, node: FileSystemNode) -> Result<(), String> {
+        let parent = path.parent().ok_or("Invalid path")?;
+        let mut current = &mut self.root;
+        for component in parent.components().skip(1) {
+            // Skip root path
+            if let FileSystemNode::Directory { nodes, .. } = current {
+                current = nodes
+                    .entry(component.as_os_str().into())
+                    .or_insert_with(FileSystemNode::new_directory);
+            } else {
+                return Err("Parent is not a directory".to_string());
+            }
+        }
+        if let FileSystemNode::Directory { nodes, .. } = current {
+            let new_node_key = path.file_name().ok_or("Invalid file name")?.into();
+            nodes.insert(new_node_key, node);
+            Ok(())
+        } else {
+            Err("Parent is not a directory".to_string())
+        }
+    }
+
+    fn remove_node(&mut self, path: &Path) -> Result<FileSystemNode, String> {
+        let parent = path.parent().ok_or("Invalid path")?;
+        let mut current = &mut self.root;
+        for component in parent.components().skip(1) {
+            // Skip root path
+            if let FileSystemNode::Directory { nodes, .. } = current {
+                current = nodes
+                    .entry(component.as_os_str().into())
+                    .or_insert_with(FileSystemNode::new_directory);
+            } else {
+                return Err("Parent is not a directory".to_string());
+            }
+        }
+        if let FileSystemNode::Directory { nodes, .. } = current {
+            let node_key: PathBuf = path.file_name().ok_or("Invalid file name")?.into();
+            nodes
+                .remove(&node_key)
+                .ok_or_else(|| "Node not found".to_string())
+        } else {
+            Err("Parent is not a directory".to_string())
+        }
+    }
+
     pub fn ls(&self, path: &Path) -> Result<Vec<PathBuf>, String> {
         let node = self.get_node(path)?;
         if node.is_directory() {
@@ -183,27 +228,7 @@ impl FileSystem {
     }
 
     pub fn mkdir(&mut self, path: &Path) -> Result<(), String> {
-        let parent = path.parent().ok_or("Invalid path")?;
-        let new_dir_name = path.file_name().ok_or("Invalid directory name")?;
-
-        let mut current = &mut self.root;
-        for component in parent.components().skip(1) {
-            // Skip root
-            if let FileSystemNode::Directory { nodes, .. } = current {
-                current = nodes
-                    .entry(component.as_os_str().into())
-                    .or_insert_with(FileSystemNode::new_directory);
-            } else {
-                return Err("Parent is not a directory".to_string());
-            }
-        }
-
-        if let FileSystemNode::Directory { nodes, .. } = current {
-            nodes.insert(new_dir_name.into(), FileSystemNode::new_directory());
-            Ok(())
-        } else {
-            Err("Parent is not a directory".to_string())
-        }
+        self.insert_node(path, FileSystemNode::new_directory())
     }
 
     pub fn create_file_from_node(
@@ -222,27 +247,8 @@ impl FileSystem {
             }
         }
 
-        let file_name = path.file_name().ok_or("Invalid file name")?;
-
-        let parent = path.parent().ok_or("Invalid path")?;
-        let mut current = &mut self.root;
-        for component in parent.components().skip(1) {
-            // Skip root
-            if let FileSystemNode::Directory { nodes, .. } = current {
-                current = nodes
-                    .entry(component.as_os_str().into())
-                    .or_insert_with(FileSystemNode::new_directory);
-            } else {
-                return Err("Parent is not a directory".to_string());
-            }
-        }
-
-        if let FileSystemNode::Directory { nodes, .. } = current {
-            nodes.insert(file_name.into(), file_node);
-            Ok(path)
-        } else {
-            Err("Parent is not a directory".to_string())
-        }
+        self.insert_node(&path, file_node)?;
+        Ok(path)
     }
 
     pub fn create_file(
@@ -254,6 +260,11 @@ impl FileSystem {
     ) -> Result<PathBuf, String> {
         let file_node = FileSystemNode::new_file(message_id, size, mime_type);
         self.create_file_from_node(path, file_node)
+    }
+
+    pub fn mv(&mut self, from: &Path, to: &Path) -> Result<(), String> {
+        let node = self.remove_node(from)?;
+        self.insert_node(to, node)
     }
 }
 
@@ -535,6 +546,76 @@ mod tests {
         let expected_path = PathBuf::from("/dir-a/file-c.tg+video_note");
         assert_eq!(path, expected_path);
         assert!(filesystem.get_node(&expected_path).unwrap().is_file());
+    }
+
+    #[rstest]
+    fn filesystem_mv_directory() {
+        let mut filesystem = FileSystem::new();
+        filesystem.mkdir(&PathBuf::from("/dir-a/subdir-a")).unwrap();
+        filesystem.mkdir(&PathBuf::from("/dir-b/subdir-b")).unwrap();
+        filesystem
+            .mv(
+                &PathBuf::from("/dir-a/subdir-a"),
+                &PathBuf::from("/dir-b/subdir-c"),
+            )
+            .unwrap();
+
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-a/subdir-a"))
+            .err()
+            .unwrap()
+            .contains("Path not found"));
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-b/subdir-c"))
+            .unwrap()
+            .is_directory());
+        // check that subdir-b is not moved
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-b/subdir-b"))
+            .unwrap()
+            .is_directory());
+    }
+
+    #[rstest]
+    fn filesystem_mv_file() {
+        let mut filesystem = FileSystem::new();
+        filesystem
+            .create_file(
+                &PathBuf::from("/dir-a/file-a"),
+                0,
+                0,
+                Some("text/plain".to_string()),
+            )
+            .unwrap();
+        filesystem
+            .create_file(
+                &PathBuf::from("/dir-b/file-b"),
+                0,
+                0,
+                Some("image/png".to_string()),
+            )
+            .unwrap();
+        filesystem
+            .mv(
+                &PathBuf::from("/dir-a/file-a.txt"),
+                &PathBuf::from("/dir-b/file-a.txt"),
+            )
+            .unwrap();
+
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-a/file-a.txt"))
+            .err()
+            .unwrap()
+            .contains("Path not found"));
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-b/file-a.txt"))
+            .unwrap()
+            .is_file());
+        // check that file-b is not moved
+        assert!(filesystem
+            .get_node(&PathBuf::from("/dir-b/file-b.png"))
+            .unwrap()
+            .is_file());
     }
 
     #[rstest]
