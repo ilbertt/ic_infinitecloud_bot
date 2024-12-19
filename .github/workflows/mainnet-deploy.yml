@@ -1,0 +1,28 @@
+name: Mainnet deploy
+
+on: workflow_dispatch
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "build-wasm"
+
+      - uses: ./.github/actions/setup-dfx
+
+      - name: Import DFX identity
+        run: |
+          echo "${{ secrets.MAINNET_PEM }}" > ./mainnet.pem
+          dfx identity import --ic --storage-mode plaintext mainnet ./mainnet.pem
+          dfx identity use mainnet
+
+      - name: Deploy to mainnet
+        run: dfx deploy --ic
