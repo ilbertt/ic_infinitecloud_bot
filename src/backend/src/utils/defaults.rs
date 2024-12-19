@@ -92,7 +92,7 @@ _Version: {VERSION}_"#
     const ASK_DIRECTORY_NAME_TEXT: &str = "Send me the name of the new DIRECTORY";
     const ASK_FILE_NAME_TEXT: &str = "Send me the name of the new FILE";
     const RENAME_FILE_TEXT: &str = "Select the file you want to RENAME";
-    const PREPARE_MOVE_FILE_TEXT: &str = "Select the file you want to MOVE";
+    const MOVE_FILE_SELECT_FILE_TEXT: &str = "Select the file you want to MOVE";
     const DELETE_DIR_TEXT: &str = "Select the directory you want to DELETE";
     const DELETE_FILE_TEXT: &str = "Select the file you want to DELETE";
     const GENERIC_ERROR_TEXT: &str = "An error has occurred. Please try again.";
@@ -161,6 +161,14 @@ _Version: {VERSION}_"#
         format!("File *{old_file_name}* RENAMED.\n\nNew name: *{new_file_name}*\nPath: `{path}`")
     }
 
+    pub fn moved_file_success_message(
+        file_name: String,
+        from_path: String,
+        to_path: String,
+    ) -> String {
+        format!("File *{file_name}* MOVED.\n\nFrom: `{from_path}`\nTo: `{to_path}`")
+    }
+
     pub fn explorer_message(path: String) -> String {
         current_path_text(path)
     }
@@ -178,12 +186,21 @@ _Version: {VERSION}_"#
         )
     }
 
-    pub fn prepare_move_file_message(path: String) -> String {
+    pub fn move_file_select_file_message(path: String) -> String {
         format!(
             r#"{}
 
-{PREPARE_MOVE_FILE_TEXT}"#,
+{MOVE_FILE_SELECT_FILE_TEXT}"#,
             current_path_text(path)
+        )
+    }
+
+    pub fn move_file_select_destination_message(path: String) -> String {
+        format!(
+            r#"File to MOVE:
+`{path}`
+
+Select the directory in which you want to move the file and click _{CURRENT_DIR_BUTTON_TEXT}_"#,
         )
     }
 
