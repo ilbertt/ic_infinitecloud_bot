@@ -59,6 +59,7 @@ impl FileSystemNode {
         matches!(self, Self::File { .. })
     }
 
+    #[cfg(test)]
     fn get_nodes(&self) -> &FileSystemNodes {
         if let Self::Directory { nodes, .. } = self {
             nodes
@@ -67,6 +68,7 @@ impl FileSystemNode {
         }
     }
 
+    #[cfg(test)]
     fn get_nodes_mut(&mut self) -> &mut FileSystemNodes {
         if let Self::Directory { nodes, .. } = self {
             nodes
@@ -75,6 +77,7 @@ impl FileSystemNode {
         }
     }
 
+    #[cfg(test)]
     fn ls(&self) -> Result<Vec<PathBuf>, String> {
         match self {
             Self::Directory { nodes, .. } => Ok(nodes.keys().cloned().collect()),
@@ -148,7 +151,8 @@ impl Default for FileSystem {
 }
 
 impl FileSystem {
-    pub fn new() -> Self {
+    #[cfg(test)]
+    fn new() -> Self {
         Self {
             root: FileSystemNode::new_directory(),
         }
@@ -218,7 +222,8 @@ impl FileSystem {
         }
     }
 
-    pub fn ls(&self, path: &Path) -> Result<Vec<PathBuf>, String> {
+    #[cfg(test)]
+    fn ls(&self, path: &Path) -> Result<Vec<PathBuf>, String> {
         let node = self.get_node(path)?;
         if node.is_directory() {
             node.ls()
@@ -251,7 +256,8 @@ impl FileSystem {
         Ok(path)
     }
 
-    pub fn create_file(
+    #[cfg(test)]
+    fn create_file(
         &mut self,
         path: &Path,
         message_id: MessageId,
