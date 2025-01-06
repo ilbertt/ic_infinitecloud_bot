@@ -48,7 +48,7 @@ impl<A: AccessControlService, C: ChatSessionService> ChatSessionController<A, C>
 
     fn get_chat_sessions_count(&self, calling_principal: Principal) -> u32 {
         self.access_control_service
-            .asset_caller_is_controller(&calling_principal);
+            .assert_caller_is_controller(&calling_principal);
 
         self.chat_session_service.get_chat_sessions_count()
     }
