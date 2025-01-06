@@ -26,3 +26,5 @@ jobs:
 
       - name: Deploy to mainnet
         run: dfx deploy --ic
+        env:
+          TELEGRAM_SECRET_TOKEN: ${{ secrets.TELEGRAM_SECRET_TOKEN }}

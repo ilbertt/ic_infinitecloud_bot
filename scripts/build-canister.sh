@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -e
-
 source .env
+
+set -e
 
 echo -e "\nBuilding canister..."
 
