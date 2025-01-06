@@ -29,6 +29,8 @@ pub trait ChatSessionService {
 
     fn update_chat_session(&self, chat_id: ChatId, chat_session: ChatSession);
 
+    fn get_chat_sessions_count(&self) -> u32;
+
     fn handle_update_content_message(
         &self,
         chat_id: ChatId,
@@ -82,6 +84,10 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
     fn update_chat_session(&self, chat_id: ChatId, chat_session: ChatSession) {
         self.chat_session_repository
             .set_chat_session_by_chat_id(chat_id, chat_session);
+    }
+
+    fn get_chat_sessions_count(&self) -> u32 {
+        self.chat_session_repository.get_chat_session_count() as u32
     }
 
     fn handle_update_content_message(

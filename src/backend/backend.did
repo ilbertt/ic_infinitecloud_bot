@@ -44,4 +44,6 @@ type StreamingStrategy = variant {
 service : {
     http_request : (request : HttpRequest) -> (HttpResponse) query;
     http_request_update : (request : HttpUpdateRequest) -> (HttpResponse);
+
+    get_chat_sessions_count : () -> (nat32) query;
 };

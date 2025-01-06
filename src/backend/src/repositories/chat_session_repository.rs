@@ -6,6 +6,8 @@ pub trait ChatSessionRepository {
     fn get_chat_session_by_chat_id(&self, chat_id: &ChatId) -> Option<ChatSession>;
 
     fn set_chat_session_by_chat_id(&self, chat_id: ChatId, chat_session: ChatSession);
+
+    fn get_chat_session_count(&self) -> u64;
 }
 
 pub struct ChatSessionRepositoryImpl {}
@@ -23,6 +25,10 @@ impl ChatSessionRepository for ChatSessionRepositoryImpl {
 
     fn set_chat_session_by_chat_id(&self, chat_id: ChatId, chat_session: ChatSession) {
         STATE.with_borrow_mut(|s| s.chat_session.insert(chat_id, chat_session));
+    }
+
+    fn get_chat_session_count(&self) -> u64 {
+        STATE.with_borrow(|s| s.chat_session.len())
     }
 }
 
