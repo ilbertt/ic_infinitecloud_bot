@@ -4,7 +4,7 @@ use ic_cdk::{caller, query};
 use crate::{
     repositories::{ChatSessionRepositoryImpl, FilesystemRepositoryImpl},
     services::{
-        AdminService, AdminServiceImpl, ChatSessionService, ChatSessionServiceImpl,
+        AccessControlService, AccessControlServiceImpl, ChatSessionService, ChatSessionServiceImpl,
         FilesystemServiceImpl,
     },
 };
@@ -16,14 +16,14 @@ fn get_chat_sessions_count() -> u32 {
     ChatSessionController::default().get_chat_sessions_count(calling_principal)
 }
 
-struct ChatSessionController<A: AdminService, C: ChatSessionService> {
-    admin_service: A,
+struct ChatSessionController<A: AccessControlService, C: ChatSessionService> {
+    access_control_service: A,
     chat_session_service: C,
 }
 
 impl Default
     for ChatSessionController<
-        AdminServiceImpl,
+        AccessControlServiceImpl,
         ChatSessionServiceImpl<
             ChatSessionRepositoryImpl,
             FilesystemServiceImpl<FilesystemRepositoryImpl>,
@@ -32,22 +32,22 @@ impl Default
 {
     fn default() -> Self {
         Self::new(
-            AdminServiceImpl::default(),
+            AccessControlServiceImpl::default(),
             ChatSessionServiceImpl::default(),
         )
     }
 }
 
-impl<A: AdminService, C: ChatSessionService> ChatSessionController<A, C> {
-    fn new(admin_service: A, chat_session_service: C) -> Self {
+impl<A: AccessControlService, C: ChatSessionService> ChatSessionController<A, C> {
+    fn new(access_control_service: A, chat_session_service: C) -> Self {
         Self {
-            admin_service,
+            access_control_service,
             chat_session_service,
         }
     }
 
     fn get_chat_sessions_count(&self, calling_principal: Principal) -> u32 {
-        self.admin_service
+        self.access_control_service
             .asset_caller_is_controller(&calling_principal);
 
         self.chat_session_service.get_chat_sessions_count()
