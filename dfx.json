@@ -1,9 +1,10 @@
 {
   "canisters": {
     "backend": {
+      "type": "custom",
+      "wasm": "./target/wasm32-unknown-unknown/release/backend.wasm",
       "candid": "src/backend/backend.did",
-      "package": "backend",
-      "type": "rust"
+      "build": ["./scripts/build-canister.sh"]
     }
   },
   "defaults": {

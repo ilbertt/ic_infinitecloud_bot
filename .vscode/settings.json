@@ -1,0 +1,9 @@
+{
+    "rust-analyzer.cargo.extraEnv": {
+        // just to avoid rust-analyzer env variables errors
+        "TELEGRAM_SECRET_TOKEN": "test-secret-key",
+    },
+    "rust-analyzer.runnables.extraEnv": {
+        "TELEGRAM_SECRET_TOKEN": "test-secret-key",
+    }
+}

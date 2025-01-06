@@ -7,7 +7,10 @@ use crate::{
         ChatId, ChatSessionRepositoryImpl, FilesystemRepositoryImpl, HeaderField, HttpRequest,
         HttpResponse, HttpUpdateRequest,
     },
-    services::{ChatSessionService, ChatSessionServiceImpl, FilesystemServiceImpl},
+    services::{
+        AccessControlService, AccessControlServiceImpl, ChatSessionService, ChatSessionServiceImpl,
+        FilesystemServiceImpl,
+    },
     utils::{
         http::{error500, ok200},
         MessageParams,
@@ -30,12 +33,14 @@ fn http_request_update(req: HttpUpdateRequest) -> HttpResponse {
     HttpController::default().http_request(req)
 }
 
-struct HttpController<C: ChatSessionService> {
+struct HttpController<A: AccessControlService, C: ChatSessionService> {
+    access_control_service: A,
     chat_session_service: C,
 }
 
 impl Default
     for HttpController<
+        AccessControlServiceImpl,
         ChatSessionServiceImpl<
             ChatSessionRepositoryImpl,
             FilesystemServiceImpl<FilesystemRepositoryImpl>,
@@ -43,7 +48,10 @@ impl Default
     >
 {
     fn default() -> Self {
-        Self::new(ChatSessionServiceImpl::default())
+        Self::new(
+            AccessControlServiceImpl::default(),
+            ChatSessionServiceImpl::default(),
+        )
     }
 }
 
@@ -62,9 +70,10 @@ fn http_response(message_params: &MessageParams) -> Result<HttpResponse, String>
     })
 }
 
-impl<C: ChatSessionService> HttpController<C> {
-    fn new(chat_session_service: C) -> Self {
+impl<A: AccessControlService, C: ChatSessionService> HttpController<A, C> {
+    fn new(access_control_service: A, chat_session_service: C) -> Self {
         Self {
+            access_control_service,
             chat_session_service,
         }
     }
@@ -78,6 +87,12 @@ impl<C: ChatSessionService> HttpController<C> {
             req.url,
             req.body.len()
         );
+
+        if !self.access_control_service.assert_http_request_is_authorized(&req) {
+            custom_print!("Unauthorized request");
+            // returning 40x causes Telegram to retry the request, which is not what we want
+            return ok200();
+        }
 
         let update: Update = match serde_json::from_slice(&req.body) {
             Ok(update) => update,
