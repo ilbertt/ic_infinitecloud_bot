@@ -25,4 +25,4 @@ jobs:
         run: cargo clippy --all-targets --all-features --workspace -- -Dwarnings
 
       - name: Cargo test
-        run: cargo test
+        run: ./scripts/test.sh

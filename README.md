@@ -84,6 +84,14 @@ In order to send messages to the bot by running the backend locally, you can dep
 
 You still need to configure Telegram to send messages to the bot via webhooks as described in [the previous step](#3-configure-telegram-to-send-messages-to-the-bot-via-webhooks).
 
+## Testing
+
+Unit tests are available with the following command:
+
+```bash
+./scripts/test.sh
+```
+
 ## Roadmap
 
 - [ ] add support for `/delete_file` and `/delete_dir` commands
