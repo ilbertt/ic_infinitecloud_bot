@@ -4,7 +4,12 @@
       "type": "custom",
       "wasm": "./target/wasm32-unknown-unknown/release/backend.wasm",
       "candid": "src/backend/backend.did",
-      "build": ["./scripts/build-canister.sh"]
+      "build": ["./scripts/build-canister.sh"],
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     }
   },
   "defaults": {
