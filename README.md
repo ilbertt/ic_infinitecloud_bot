@@ -103,6 +103,7 @@ Linting (with [clippy](https://doc.rust-lang.org/stable/clippy)) is available wi
 ## Roadmap
 
 - [ ] add support for `/delete_file` and `/delete_dir` commands
+- [ ] add a [Telegram Mini App](https://core.telegram.org/bots/webapps) for the bot
 
 ## Contributing
 
