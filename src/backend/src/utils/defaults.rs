@@ -32,17 +32,17 @@ _other_ -> _.tg+(type-of-message-you-sent)_
 *CREATE DIRECTORY* (/mkdir):
 Click the _HERE_ button where you want to create the directory and send the directory name when asked (the name cannot include `/` character).
 
-*MOVE FILES* (/move_file):
+*MOVE FILES* (/move\_file):
 The flow is almost the same as to save files.
 
-*RENAME FILES* (/rename_file):
+*RENAME FILES* (/rename\_file):
 The flow is almost the same as to save files.
 
 *EXPLORE FILES AND DIRECTORIES* (/explorer):
 Click on directories to navigate into them.
 Click on files to get the reference to the file.
 
-*DELETE FILES/DIRECTORIES* (/delete_file and /delete_dir):
+*DELETE FILES/DIRECTORIES* (/delete\_file and /delete\_dir):
 {COMING_SOON_TEXT}
 
 Troubles? Open an issue on GitHub: [{GITHUB_REPO_URL}/issues]({GITHUB_REPO_URL}/issues)"#
