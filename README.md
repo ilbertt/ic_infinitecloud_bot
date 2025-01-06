@@ -1,60 +1,91 @@
 # infinitecloud_bot
 
-Welcome to your new infinitecloud_bot project and to the internet computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+As Telegram offers unlimited cloud storage, it lacks of the main characteristics of the cloud services: folders structure, file names, etc.
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+Here comes the [Infinite Cloud Bot](https://t.me/infinitecloud_bot)! This bot simply keeps track of your files in a "filesystem", _without saving anything outside of the Telegram chat_ and so preserving your privacy.
 
-To learn more before you start working with infinitecloud_bot, see the following documentation available online:
+The bot's backend runs in a [canister](https://dashboard.internetcomputer.org/canister/4vou4-lyaaa-aaaao-a3p4a-cai) on the [Internet Computer](https://internetcomputer.org/).
 
-- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
-- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
-- [Rust Canister Development Guide](https://internetcomputer.org/docs/current/developer-docs/backend/rust/)
-- [ic-cdk](https://docs.rs/ic-cdk)
-- [Candid Introduction](https://internetcomputer.org/docs/current/developer-docs/backend/candid/)
+## Usage
 
-If you want to start working on your project right away, you might want to try the following commands:
+### Use the bot
+
+Just start a chat with [@infinitecloud_bot](https://t.me/infinitecloud_bot) on Telegram! You'll find more usage instructions at the `/help` command in the bot chat.
+
+### Deploy your own bot
+
+#### 1. Requirements
+
+Make sure you are familiar with the [Internet Computer](https://internetcomputer.org), its concepts and tools.
+
+Make sure you have created a Telegram Bot ([instructions](https://core.telegram.org/bots#3-how-do-i-create-a-bot)) and have obtained a Bot API token from [@BotFather](https://t.me/BotFather) (we need this token in the next steps).
+
+Create the following commands for your bot using [@BotFather](https://t.me/BotFather):
+
+- `/help`
+- `/info`
+- `/mkdir`
+- `/explorer`
+- `/rename_file`
+- `/move_file`
+
+After creating the bot and its commands, create a random alphanumeric string of 256 characters max and add it to the `.env` file in the root directory under the `TELEGRAM_SECRET_TOKEN`. You can create the `.env` file by copying the [`.env.example`](./.env.example) file and renaming it to `.env`. This key will be used to authenticate requests coming from the Telegram servers. We need it in the next steps.
+
+Make sure you have these tools installed:
+
+- [Rust](https://www.rust-lang.org/tools/install)
+- [dfx](https://internetcomputer.org/docs/current/developer-docs/setup/install)
+
+#### 2. Deploy on the Internet Computer
+
+Make sure you have obtained some cycles to cover the cost of the deployment. See [this guide](https://internetcomputer.org/docs/current/developer-docs/getting-started/deploy-and-manage) for more info.
 
 ```bash
-cd infinitecloud_bot/
-dfx help
-dfx canister --help
+# You need to remove the `canister_ids.json` file before deploying (ONLY THE FIRST TIME)
+rm canister_ids.json
+dfx deploy --ic
 ```
 
-## Running the project locally
+A new `canister_ids.json` file will be created in the root directory when the deployment is completed. You'll find the canister ID for the backend canister in the `backend.ic` field. We need it in the next step.
+
+If you want to run the canister's bot locally, see the [Running the project locally](#running-the-project-locally) section.
+
+#### 3. Configure Telegram to send messages to the bot via webhooks
+
+Last step is to configure Telegram to invoke the bot via [webhooks](https://core.telegram.org/bots/api#setwebhook).
+
+Make an HTTP POST request to the following URL:
+
+```bash
+curl -X POST https://api.telegram.org/bot<bot-token-from-botfather>/setWebhook?url=https://<backend-canister-id>.raw.icp0.io/&drop_pending_updates=True&secret_token=<TELEGRAM_SECRET_TOKEN>
+```
+
+### Running the project locally
 
 If you want to test your project locally, you can use the following commands:
 
 ```bash
 # Starts the replica, running in the background
-dfx start --background
+dfx start
 
 # Deploys your canisters to the replica and generates your candid interface
 dfx deploy
 ```
 
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
-
-If you have made changes to your backend canister, you can generate a new candid interface with
+In order to send messages to the bot by running the backend locally, you can deploy the canister using the following command:
 
 ```bash
-npm run generate
+./scripts/deploy-local-with-ngork-tunnel.sh
 ```
 
-at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
+> Make sure you have [ngrok](https://ngrok.com/) installed.
 
-If you are making frontend changes, you can start a development server with
+You still need to configure Telegram to send messages to the bot via webhooks as described in [the previous step](#3-configure-telegram-to-send-messages-to-the-bot-via-webhooks).
 
-```bash
-npm start
-```
+## Roadmap
 
-Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
+- [ ] add support for `/delete_file` and `/delete_dir` commands
 
-### Note on frontend environment variables
+## Contributing
 
-If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
-
-- set`DFX_NETWORK` to `ic` if you are using Webpack
-- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
-  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
-- Write your own `createActor` constructor
+Issues and Pull Requests are welcome!
