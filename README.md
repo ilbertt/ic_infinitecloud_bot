@@ -6,6 +6,8 @@ Here comes the [Infinite Cloud Bot](https://t.me/infinitecloud_bot)! This bot si
 
 The bot's backend runs in a [canister](https://dashboard.internetcomputer.org/canister/4vou4-lyaaa-aaaao-a3p4a-cai) on the [Internet Computer](https://internetcomputer.org/).
 
+The previous version of the bot was developed in Node.js and is available at [ilbertt/infinitecloud_bot](https://github.com/ilbertt/infinitecloud_bot). It was always a pain to keep the bot server running _without having to care about the backend_, and this is the reason why we have chosen to use the [Internet Computer](https://internetcomputer.org/) for this new version of the bot.
+
 ## Usage
 
 ### Use the bot
