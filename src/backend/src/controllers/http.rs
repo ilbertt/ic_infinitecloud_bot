@@ -88,7 +88,10 @@ impl<A: AccessControlService, C: ChatSessionService> HttpController<A, C> {
             req.body.len()
         );
 
-        if !self.access_control_service.assert_http_request_is_authorized(&req) {
+        if !self
+            .access_control_service
+            .assert_http_request_is_authorized(&req)
+        {
             custom_print!("Unauthorized request");
             // returning 40x causes Telegram to retry the request, which is not what we want
             return ok200();
