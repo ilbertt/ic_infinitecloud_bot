@@ -22,7 +22,7 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Cargo clippy
-        run: cargo clippy --all-targets --all-features --workspace -- -Dwarnings
+        run: ./scripts/lint.sh
 
       - name: Cargo test
         run: ./scripts/test.sh

@@ -92,6 +92,14 @@ Unit tests are available with the following command:
 ./scripts/test.sh
 ```
 
+## Linting
+
+Linting (with [clippy](https://doc.rust-lang.org/stable/clippy)) is available with the following command:
+
+```bash
+./scripts/lint.sh
+```
+
 ## Roadmap
 
 - [ ] add support for `/delete_file` and `/delete_dir` commands
