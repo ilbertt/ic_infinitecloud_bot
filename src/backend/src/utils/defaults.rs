@@ -12,7 +12,11 @@ pub mod messages {
 
     const GITHUB_REPO_URL: &str = "https://github.com/ilbertt/ic_infinitecloud_bot";
 
-    const BOT_HELP_MESSAGE: &str = r#"*SAVE FILES*:
+    pub const COMING_SOON_TEXT: &str = "Coming soon...";
+
+    pub fn help_message() -> String {
+        format!(
+            r#"*SAVE FILES*:
 1. send ONE FILE AT A TIME to the bot (the file could be any type of message: _text_, _audio_, _video_, _image_, _sticker_, etc.)
 2. navigate to the directory you want to save it
 3. click _HERE_ to select the current directory where to save the file
@@ -25,17 +29,25 @@ _audio_ -> same extension of the file you sent
 _document_ -> same extension of the file you sent
 _other_ -> _.tg+(type-of-message-you-sent)_
 
-*CREATE DIRECTORY*:
+*CREATE DIRECTORY* (/mkdir):
 Click the _HERE_ button where you want to create the directory and send the directory name when asked (the name cannot include `/` character).
 
-*MOVE FILES*:
+*MOVE FILES* (/move_file):
 The flow is almost the same as to save files.
 
-*DELETE FILES/DIRECTORIES*:
-Same as above
+*RENAME FILES* (/rename_file):
+The flow is almost the same as to save files.
 
-*RESTORE FILE SISTEM*:
-If you unpinned or moved the filesystem, use this command to resend the filesystem to the bot."#;
+*EXPLORE FILES AND DIRECTORIES* (/explorer):
+Click on directories to navigate into them.
+Click on files to get the reference to the file.
+
+*DELETE FILES/DIRECTORIES* (/delete_file and /delete_dir):
+{COMING_SOON_TEXT}
+
+Troubles? Open an issue on GitHub: [{GITHUB_REPO_URL}/issues]({GITHUB_REPO_URL}/issues)"#
+        )
+    }
 
     pub fn start_message(user_first_name: Option<String>) -> String {
         let greet = if let Some(first_name) = user_first_name {
@@ -50,14 +62,11 @@ Welcome on *Infinite Cloud*!
 
 Here's some help to start:
 
-{BOT_HELP_MESSAGE}
+{}
 
 To see this help message again, use the /help command"#,
+            help_message()
         )
-    }
-
-    pub fn help_message() -> String {
-        BOT_HELP_MESSAGE.to_string()
     }
 
     pub fn info_message() -> String {
@@ -93,8 +102,8 @@ _Version: {VERSION}_"#
     const ASK_FILE_NAME_TEXT: &str = "Send me the name of the new FILE";
     const RENAME_FILE_TEXT: &str = "Select the file you want to RENAME";
     const MOVE_FILE_SELECT_FILE_TEXT: &str = "Select the file you want to MOVE";
-    const DELETE_DIR_TEXT: &str = "Select the directory you want to DELETE";
-    const DELETE_FILE_TEXT: &str = "Select the file you want to DELETE";
+    // const DELETE_DIR_TEXT: &str = "Select the directory you want to DELETE";
+    // const DELETE_FILE_TEXT: &str = "Select the file you want to DELETE";
     const GENERIC_ERROR_TEXT: &str = "An error has occurred. Please try again.";
 
     fn current_path_text(path: String) -> String {
@@ -204,23 +213,23 @@ Select the directory in which you want to move the file and click _{CURRENT_DIR_
         )
     }
 
-    pub fn delete_dir_message(path: String) -> String {
-        format!(
-            r#"{}
+    //     pub fn delete_dir_message(path: String) -> String {
+    //         format!(
+    //             r#"{}
 
-{DELETE_DIR_TEXT}"#,
-            current_path_text(path)
-        )
-    }
+    // {DELETE_DIR_TEXT}"#,
+    //             current_path_text(path)
+    //         )
+    //     }
 
-    pub fn delete_file_message(path: String) -> String {
-        format!(
-            r#"{}
+    //     pub fn delete_file_message(path: String) -> String {
+    //         format!(
+    //             r#"{}
 
-{DELETE_FILE_TEXT}"#,
-            current_path_text(path)
-        )
-    }
+    // {DELETE_FILE_TEXT}"#,
+    //             current_path_text(path)
+    //         )
+    //     }
 
     pub fn generic_error_message() -> String {
         GENERIC_ERROR_TEXT.to_string()

@@ -12,11 +12,10 @@ use crate::{
         messages::{
             ask_directory_name_message, ask_file_name_message, ask_rename_file_message,
             back_inline_keyboard, create_file_message, created_directory_success_message,
-            created_file_success_message, delete_dir_message, delete_file_message,
-            explorer_file_message, explorer_message, help_message, info_message, mkdir_message,
-            move_file_select_destination_message, move_file_select_file_message,
-            moved_file_success_message, rename_file_message, renamed_file_success_message,
-            start_message,
+            created_file_success_message, explorer_file_message, explorer_message, help_message,
+            info_message, mkdir_message, move_file_select_destination_message,
+            move_file_select_file_message, moved_file_success_message, rename_file_message,
+            renamed_file_success_message, start_message, COMING_SOON_TEXT,
         },
         MessageParams, TG_FILE_MIME_TYPE_PREFIX,
     },
@@ -164,28 +163,8 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                                 .build();
                             send_message_params.set_inline_keyboard_markup(keyboard);
                         }
-                        Command::DeleteDir => {
-                            cs.set_action(ChatSessionAction::DeleteDir);
-
-                            send_message_params
-                                .set_text(delete_dir_message(cs.current_path_string()));
-
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
-                                .with_delete_dir_button()
-                                .with_files()?
-                                .build();
-                            send_message_params.set_inline_keyboard_markup(keyboard);
-                        }
-                        Command::DeleteFile => {
-                            cs.set_action(ChatSessionAction::DeleteFile);
-
-                            send_message_params
-                                .set_text(delete_file_message(cs.current_path_string()));
-
-                            let keyboard = KeyboardDirectoryBuilder::new(&fs, cs.current_path())?
-                                .with_files()?
-                                .build();
-                            send_message_params.set_inline_keyboard_markup(keyboard);
+                        Command::DeleteDir | Command::DeleteFile => {
+                            send_message_params.set_text(COMING_SOON_TEXT.to_string());
                         }
                     }
 

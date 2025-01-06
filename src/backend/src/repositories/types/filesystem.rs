@@ -314,6 +314,7 @@ impl<'a> KeyboardDirectoryBuilder<'a> {
     }
 
     /// Prepends the delete dir button to the keyboard
+    #[allow(dead_code)] // TODO: remove once used
     pub fn with_delete_dir_button(&mut self) -> &mut Self {
         self.inline_keyboard.insert(0, delete_dir_inline_button());
         self
