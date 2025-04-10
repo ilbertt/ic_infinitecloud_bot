@@ -5,7 +5,7 @@ use std::{
 };
 
 use candid::{CandidType, Decode, Deserialize, Encode};
-use frankenstein::{InlineKeyboardButton, InlineKeyboardMarkup};
+use frankenstein::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use ic_stable_structures::{storable::Bound, Storable};
 use mime2ext::mime2ext;
 

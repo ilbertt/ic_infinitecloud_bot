@@ -1,7 +1,10 @@
 use std::{borrow::Cow, fmt::Display};
 
 use candid::{CandidType, Deserialize};
-use frankenstein::{ChatId as TgChatId, MaybeInaccessibleMessage, UpdateContent};
+use frankenstein::{
+    types::{ChatId as TgChatId, MaybeInaccessibleMessage},
+    updates::UpdateContent,
+};
 use ic_stable_structures::{storable::Bound, Storable};
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]

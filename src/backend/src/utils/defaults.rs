@@ -6,8 +6,7 @@ pub const TG_FILE_EXTENSION_PREFIX: &str = "tg+";
 pub const TG_FILE_MIME_TYPE_PREFIX: &str = formatcp!("application/{}", TG_FILE_EXTENSION_PREFIX);
 
 pub mod messages {
-    use const_format::formatcp;
-    use frankenstein::{InlineKeyboardButton, InlineKeyboardMarkup};
+    use frankenstein::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
     use crate::repositories::ChatSessionAction;
 

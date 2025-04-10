@@ -16,10 +16,10 @@ ic-stable-structures = "0.6"
 serde = "1.0"
 serde_json = "1.0"
 
-frankenstein = { version = "0.35", default-features = false }
+frankenstein = { version = "0.40", default-features = false }
 
 const_format = "0.2"
 mime2ext = "0.1"
 
 [dev-dependencies]
-rstest = "0.23"
+rstest = "0.25"

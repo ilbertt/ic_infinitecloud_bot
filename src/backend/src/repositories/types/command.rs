@@ -1,4 +1,4 @@
-use frankenstein::{Message, MessageEntityType};
+use frankenstein::types::{Message, MessageEntityType};
 
 #[derive(Debug)]
 pub enum Command {

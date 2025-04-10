@@ -1,6 +1,7 @@
 use frankenstein::{
-    EditMessageTextParams, InlineKeyboardMarkup, LinkPreviewOptions, ParseMode, ReplyMarkup,
-    ReplyParameters, SendMessageParams,
+    methods::{EditMessageTextParams, SendMessageParams},
+    types::{InlineKeyboardMarkup, LinkPreviewOptions, ReplyMarkup, ReplyParameters},
+    ParseMode,
 };
 use serde_json::Value;
 

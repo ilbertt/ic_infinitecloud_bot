@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use frankenstein::InlineKeyboardButton;
+use frankenstein::types::InlineKeyboardButton;
 
 use crate::repositories::ChatSessionAction;
 

@@ -1,4 +1,4 @@
-use frankenstein::{CallbackQuery, MaybeInaccessibleMessage, Message};
+use frankenstein::types::{CallbackQuery, MaybeInaccessibleMessage, Message};
 
 use crate::{
     custom_print,

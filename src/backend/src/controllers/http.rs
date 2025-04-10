@@ -1,4 +1,4 @@
-use frankenstein::{Update, UpdateContent};
+use frankenstein::updates::{Update, UpdateContent};
 use ic_cdk::{query, update};
 
 use crate::{
