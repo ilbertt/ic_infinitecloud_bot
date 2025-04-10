@@ -1,6 +1,9 @@
+use const_format::formatcp;
+
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub const TG_FILE_MIME_TYPE_PREFIX: &str = "tg+";
+pub const TG_FILE_EXTENSION_PREFIX: &str = "tg+";
+pub const TG_FILE_MIME_TYPE_PREFIX: &str = formatcp!("application/{}", TG_FILE_EXTENSION_PREFIX);
 
 pub mod messages {
     use const_format::formatcp;

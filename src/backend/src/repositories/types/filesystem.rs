@@ -13,7 +13,7 @@ use crate::utils::{
     filesystem::root_path,
     get_current_time, is_absolute,
     messages::{current_dir_inline_button, delete_dir_inline_button, parent_dir_inline_button},
-    path_button, TG_FILE_MIME_TYPE_PREFIX,
+    path_button, TG_FILE_EXTENSION_PREFIX, TG_FILE_MIME_TYPE_PREFIX,
 };
 
 pub type MessageId = i32;
@@ -245,7 +245,9 @@ impl FileSystem {
 
         if path.extension().is_none() {
             if let Some(mut ext) = file_node.file_mime_type() {
-                if !ext.starts_with(TG_FILE_MIME_TYPE_PREFIX) {
+                if ext.starts_with(TG_FILE_MIME_TYPE_PREFIX) {
+                    ext = ext.replace(TG_FILE_MIME_TYPE_PREFIX, TG_FILE_EXTENSION_PREFIX);
+                } else {
                     ext = mime2ext(&ext).unwrap_or_default().to_string();
                 }
                 path = path.with_extension(ext);
@@ -541,7 +543,7 @@ mod tests {
         assert_eq!(path, expected_path);
         assert!(filesystem.get_node(&expected_path).unwrap().is_file());
 
-        // do not parse tg+ mime types
+        // handle application/tg+... mime types
         let path = filesystem
             .create_file(
                 &PathBuf::from("/dir-a/file-c"),

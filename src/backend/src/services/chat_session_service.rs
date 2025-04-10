@@ -266,7 +266,7 @@ impl<T: ChatSessionRepository, F: FilesystemService> ChatSessionService
                             chat_id.clone(),
                             msg.message_id,
                             photo.file_size,
-                            Some("jpeg".to_string()),
+                            Some("image/jpeg".to_string()),
                         );
                     }
 
