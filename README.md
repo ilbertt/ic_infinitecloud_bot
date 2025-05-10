@@ -59,7 +59,7 @@ Last step is to configure Telegram to invoke the bot via [webhooks](https://core
 Make an HTTP POST request to the following URL:
 
 ```bash
-curl -X POST https://api.telegram.org/bot<bot-token-from-botfather>/setWebhook?url=https://<backend-canister-id>.raw.icp0.io/&drop_pending_updates=True&secret_token=<TELEGRAM_SECRET_TOKEN>
+curl -X POST "https://api.telegram.org/bot<bot-token-from-botfather>/setWebhook?url=https://<backend-canister-id>.icp0.io/?drop_pending_updates=True&secret_token=<TELEGRAM_SECRET_TOKEN>"
 ```
 
 ### Running the project locally
