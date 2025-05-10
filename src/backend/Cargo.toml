@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 candid = "0.10"
-ic-cdk = "0.17"
+ic-cdk = "0.18"
 ic-stable-structures = "0.6"
 
 serde = "1.0"

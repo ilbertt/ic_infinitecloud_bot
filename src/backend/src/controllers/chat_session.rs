@@ -1,5 +1,5 @@
 use candid::Principal;
-use ic_cdk::{caller, query};
+use ic_cdk::{api::msg_caller, query};
 
 use crate::{
     repositories::{ChatSessionRepositoryImpl, FilesystemRepositoryImpl},
@@ -11,7 +11,7 @@ use crate::{
 
 #[query]
 fn get_chat_sessions_count() -> u32 {
-    let calling_principal = caller();
+    let calling_principal = msg_caller();
 
     ChatSessionController::default().get_chat_sessions_count(calling_principal)
 }

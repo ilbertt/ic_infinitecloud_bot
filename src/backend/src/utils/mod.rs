@@ -11,11 +11,11 @@ macro_rules! custom_print {
     ($($arg:tt)*) => {
         #[cfg(not(test))]
         {
-            ic_cdk::print(format!("{}", format!($($arg)*)));
+            ic_cdk::println!("{}", format!($($arg)*));
         }
         #[cfg(test)]
         {
-            println!("{}", format!($($arg)*));
+            std::println!("{}", format!($($arg)*));
         }
     }
 }
